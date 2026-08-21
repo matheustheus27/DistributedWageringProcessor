@@ -43,13 +43,9 @@ Localização: `tests/concurrency/concurrency.test.ts`
 
 Simulam um cenário real de disputa agressiva de saldo por um mesmo jogador em instâncias/threads paralelas:
 
-- **Cenário**: Uma carteira é criada com saldo de **R$ 100,00 BRL**.
-- **Ação**: O script dispara **50 requisições simultâneas de aposta de R$ 80,00 BRL** usando `Promise.all()`.
-- **Garantia Testada**: O PostgreSQL `SELECT FOR UPDATE` com `lock_timeout` serializa a execução no banco de dados.
-- **Resultado Esperado**:
-  - Exatamente **1 aposta é APROVADA** (`status: PROCESSED`).
-  - Exatamente **49 apostas são REJEITADAS** por saldo insuficiente (`status: REJECTED` / `failureCode: INSUFFICIENT_FUNDS`).
-  - Saldo final da carteira permanece rigorosamente em **R$ 20,00 BRL** com zero *lost updates*.
+> [!IMPORTANT]
+> **Validação de Zero Lost-Updates**:
+> Uma carteira é criada com saldo de **R$ 100,00 BRL** e recebe **50 requisições simultâneas de R$ 80,00 BRL** usando `Promise.all()`. O teste asserta que **exatamente 1 aposta passa** e **49 são rejeitadas**, mantendo o saldo final perfeito de **R$ 20,00 BRL**.
 
 ---
 
@@ -59,10 +55,9 @@ Localização: `tests/integration/chaos.test.ts`
 
 Valida a resiliência do sistema diante de falhas fatais de infraestrutura:
 
-- **Cenário**: O consumidor SQS recebe uma mensagem de aposta e inicia o processamento SQL. A transação faz o `COMMIT` no PostgreSQL (gravando `Wallet`, `Ledger` e `InboxMessage`), mas o processo Node/Bun sofre um `SIGKILL` (interrupção abrupta) **antes de enviar o ACK `DeleteMessage` ao SQS**.
-- **Ação**: O SQS detecta a ausência de ACK e reentrega a mensagem para o consumidor após a visibilidade expirar.
-- **Garantia Testada**: A chave `PRIMARY KEY (consumer_name, message_id)` na tabela `inbox_messages` intercepta a mensagem reentregue.
-- **Resultado Esperado**: O sistema emite o ACK no SQS e encerra o processamento **sem debitar o saldo uma segunda vez** e sem gerar lançamentos duplicados no extrato contábil.
+> [!WARNING]
+> **Simulação de Crash Fatais (`SIGKILL`)**:
+> O teste interrompe o processo Node/Bun com `SIGKILL` exatamente após o `COMMIT` no PostgreSQL mas antes do SQS `ACK`. Ao subir o processo novamente, o SQS reentrega a mensagem e o sistema intercepta pela chave `inbox_messages`, emitindo o ACK limpo sem duplicar débitos nem criar entradas duplicadas no extrato contábil.
 
 ---
 

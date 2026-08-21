@@ -1,6 +1,16 @@
-# 🦧 Processador Financeiro Distribuído de Apostas — Jungle Gaming
+# 🦧 Distributed Wagering Processor — Jungle Gaming
 
-Bem-vindo ao repositório do **Distributed Wagering Processor**! Este projeto foi desenvolvido para o desafio técnico de Backend Developer da **Jungle Gaming**.
+![Bun Version](https://img.shields.io/badge/Bun-1.1-orange?style=for-the-badge&logo=bun)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue?style=for-the-badge&logo=typescript)
+![NestJS](https://img.shields.io/badge/NestJS-10.3-red?style=for-the-badge&logo=nestjs)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue?style=for-the-badge&logo=postgresql)
+![AWS SQS](https://img.shields.io/badge/AWS_SQS-FIFO-yellow?style=for-the-badge&logo=amazonaws)
+![Docker](https://img.shields.io/badge/Docker-Compose-blue?style=for-the-badge&logo=docker)
+![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
+
+> [!IMPORTANT]
+> **Microserviço financeiro distribuído de alta concorrência**, desenvolvido para o desafio técnico de Backend Developer da **Jungle Gaming**.
+> Garante consistência financeira estrita, idempotência persistente, ledger contábil imutável (Partidas Dobradas) e resiliência total contra falhas distribuídas e redelivery.
 
 ---
 
@@ -11,13 +21,14 @@ Imagine que você está jogando em um cassino online. Você faz uma aposta de **
 2. A sua conexão de internet oscila e o jogo reenvia a mesma mensagem **3 vezes**.
 3. Ao mesmo tempo, você abriu o jogo em outra aba e tentou apostar mais **R$ 80,00**, mas seu saldo inicial era de apenas **R$ 100,00**.
 
-**O que um sistema financeiro de verdade NÃO pode deixar acontecer?**
-- ❌ Não pode descontar a mesma aposta 3 vezes (Idempotência).
-- ❌ Não pode deixar o saldo ficar negativo (Consistência Financeira).
-- ❌ Não pode perder a conta ou calcular centavos errado (Precisão Decimal).
-- ❌ Não pode travar nem dar erro se tiverem 10.000 pessoas jogando juntas (Concorrência & Resiliência).
+> [!WARNING]
+> **O que um sistema financeiro de verdade NÃO pode deixar acontecer?**
+> - ❌ Não pode descontar a mesma aposta 3 vezes (**Idempotência**).
+> - ❌ Não pode deixar o saldo ficar negativo (**Consistência Financeira**).
+> - ❌ Não pode perder a conta ou calcular centavos errado (**Precisão Decimal `Money`**).
+> - ❌ Não pode travar nem dar erro se tiverem 10.000 pessoas jogando juntas (**Concorrência & Resiliência**).
 
-Este projeto é a solução para esse problema: um **microserviço financeiro distribuído**, resiliente a falhas e pronto para rodar em produção em múltiplos servidores simultâneos.
+Este projeto é a solução para esse problema: um microserviço financeiro distribuído, resiliente a falhas e pronto para rodar em produção em múltiplos servidores simultâneos.
 
 ---
 
@@ -39,7 +50,7 @@ sequenceDiagram
     API->>UseCase: execute(ProcessWagerCommand)
     
     note over UseCase, DB: 🔒 Transação Atômica SQL (em.transactional)
-    UseCase->>DB: 1. SELECT ... FOR UPDATE (Lock na Wallet)
+    UseCase->>DB: 1. SELECT FOR UPDATE com lock_timeout 2s (Lock na Wallet)
     UseCase->>DB: 2. Inserir InboxMessage (Deduplicação)
     UseCase->>DB: 3. Validar Idempotência (payloadHash SHA-256)
     UseCase->>DB: 4. Validar Regra de Saldo (Saldo >= Valor)
@@ -59,30 +70,32 @@ sequenceDiagram
 
 ---
 
-## 🌟 Recursos Avançados de Engenharia Produção-Ready
+## 🌟 8 Diferenciais de Alta Engenharia Incorporados
 
 1. **⚡ Suite Automatizada de Testes de Carga (`bun run test:load`)**: Script de benchmarking simulando cenários de *Hot Wallet* (100 requisições simultâneas na mesma conta) e injeção massiva de duplicatas.
 2. **💥 Chaos Engineering & Resiliência (`bun run test:chaos`)**: Teste de integração automatizado simulando queda de processo (`SIGKILL`) pós-commit.
 3. **📊 Double-Entry Bookkeeping (Partidas Dobradas)**: Lançamentos contábeis balanceados entre `PLAYER_LIABILITY`, `HOUSE_PLATFORM` e `PROVIDER_SETTLEMENT`.
 4. **🔍 Context Logging & Telemetria**: `AsyncLocalStorage` nativo propagando `correlationId`, `walletId` e `traceId` automaticamente em logs JSON Pino.
 5. **📥 Gestão de DLQ CLI (`bun run dlq:inspect` / `bun run dlq:replay`)**: Ferramenta de inspeção e reprocessamento de mensagens da Dead Letter Queue.
-6. **🔌 Postman & Insomnia Collections Prontas**: Coleções interativas prontas em `docs/` com documentação embutida nos próprios endpoints.
+6. **🔌 Postman & Insomnia Collections Prontas**: Coleções interativas prontas em `docs/` com scripts de automação de variáveis embutidos.
 7. **⚙️ CI/CD Pipeline (GitHub Actions)**: Workflows automatizados em `.github/workflows/ci.yml`.
 8. **☸️ Manifestos Kubernetes Produção-Ready (`k8s/`)**: Deployment com HPA de 3-10 réplicas, ConfigMap, Service e Liveness/Readiness probes.
-9. **🔨 Makefile & Taskfile de Automação**: Atalhos multiplataforma (`make up` / `task up`, `make test` / `task test`, `make test-load` / `task test:load`).
 
 ---
 
-## 🚀 Como Rodar o Projeto
+## 🚀 Como Rodar o Projeto em 1 Comando
 
-### Usando Taskfile ou Makefile (Recomendado)
+> [!TIP]
+> **Usando Taskfile ou Makefile (Recomendado)**
+
 ```bash
 task up         # Ou 'make up' -> Sobe PostgreSQL, LocalStack, Prometheus e Grafana
 task test       # Ou 'make test' -> Executa testes unitários
+task test:smoke # Ou 'make smoke-test' -> Executa o teste rápido E2E de corrida de saldo
 task test:load  # Ou 'make test-load' -> Executa teste de carga e benchmarking
 ```
 
-### Usando Docker Compose
+### Usando Docker Compose Direto
 ```bash
 docker compose up --build --scale app=3
 ```
@@ -104,8 +117,8 @@ DistributedWageringProcessor/
 │   ├── 📄 04-concorrencia-e-locks.md   # Pessimistic Locking, Hash Canônico e Double-Entry
 │   ├── 📄 05-guia-de-execucao.md       # Comandos de automação, Grafana e Testes de Carga
 │   ├── 📄 06-testes-e-qualidade.md     # Documentação detalhada de cada tipo de teste
-│   ├── 📜 wagering-api.postman_collection.json  # Coleção Postman com Documentação Embutida
-│   └── 📜 wagering-api.insomnia_collection.json # Coleção Insomnia com Documentação Embutida
+│   ├── 📜 wagering-api.postman_collection.json  # Coleção Postman com Automação de Variáveis
+│   └── 📜 wagering-api.insomnia_collection.json # Coleção Insomnia com Encadeamento de Respostas
 ├── 📁 src/                             # Código-fonte da aplicação (Hexagonal Architecture)
 │   ├── 📁 core/                        # Núcleo compartilhado DDD (Domain primitives, Result, Errors)
 │   │   ├── 📁 application/             # Monad funcional Result<T, E>
@@ -160,14 +173,14 @@ DistributedWageringProcessor/
 
 ---
 
-## 📚 Documentação Técnica Detalhada (`docs/`)
+## 📚 Central de Documentação Técnica Detalhada (`docs/`)
 
 Para explorar a documentação completa por tópicos:
 
-- 📄 **[00 — Visão Geral do Sistema](docs/00-visao-geral.md)**: Contexto de iGaming, desafios de sistemas distribuídos e invariantes globais.
+- 📄 **[00 — Visão Geral do Sistema](docs/00-visao-geral.md)**: Contexto de iGaming, desafios de sistemas distribuídos e ER Diagram do banco.
 - 📐 **[01 — Arquitetura do Sistema & Diagramas](docs/01-arquitetura.md)**: Camadas da Arquitetura Hexagonal, Diagrama C4 de Contêineres e Máquina de Estados.
 - 📡 **[02 — Especificação Completa da API & Payloads](docs/02-api-e-payloads.md)**: Todos os endpoints HTTP, exemplos de request/response e tabela de `FailureCode`.
-- 📬 **[03 — Mensageria, SQS FIFO & Outbox Pattern](docs/03-mensageria-e-sqs.md)**: Formato de mensagens SQS, Inbox deduplication, Outbox worker e comandos CLI da DLQ.
+- 📬 **[03 — Mensageria, SQS FIFO & Outbox Pattern](docs/03-mensageria-e-sqs.md)**: Payloads SQS FIFO, Inbox pattern e comandos CLI da DLQ.
 - 🔒 **[04 — Concorrência, Locking & Double-Entry](docs/04-concorrencia-e-locks.md)**: Pessimistic Locking (`SELECT FOR UPDATE`), hash canônico SHA-256 e partidas dobradas.
 - 🚀 **[05 — Guia de Execução & Testes](docs/05-guia-de-execucao.md)**: Automação via Taskfile/Makefile, Dashboard Grafana e relatório de testes de carga.
 - 🧪 **[06 — Suíte de Testes & Garantia de Qualidade](docs/06-testes-e-qualidade.md)**: Documentação detalhada dos testes unitários, concorrência, chaos engineering, smoke test e load test.

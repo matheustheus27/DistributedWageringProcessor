@@ -4,6 +4,10 @@
 
 A unidade fundamental de concorrência do sistema é a **`walletId`**.
 
+> [!IMPORTANT]
+> **Prevenção de Deadlocks (`lock_timeout`)**:
+> Ao executar `findById(walletId, true)`, o repositório configura `SET LOCAL lock_timeout = '2000ms'`. Se uma linha do banco ficar travada por mais de 2 segundos, o PostgreSQL interrompe a transação imediatamente com um erro previsível de timeout (*fail-fast*), impedindo travamento de conexões.
+
 Quando duas ou mais apostas tentam alterar o saldo da mesma carteira simultaneamente em instâncias diferentes da aplicação:
 
 1. A primeira instância inicia o Unit of Work (`em.transactional()`).

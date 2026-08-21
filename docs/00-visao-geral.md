@@ -14,7 +14,9 @@ flowchart LR
 
 ## 2. O Desafio de Sistemas Distribuídos
 
-Em um ambiente de alta concorrência com milhares de apostadores simultâneos:
+> [!WARNING]
+> Em um ambiente de alta concorrência com milhares de apostadores simultâneos, o sistema enfrenta 4 grandes desafios:
+
 1. **Redelivery & Redundância**: Mensagens podem ser entregues **mais de uma vez** (*at-least-once*) por oscilações de rede.
 2. **Entregas Fora de Ordem**: Um pedido de estorno (`REFUND`) ou reversão (`ROLLBACK`) pode chegar ao sistema **antes** da aposta original (`BET`).
 3. **Disputa de Saldo Concorrente (*Hot Wallet*)**: Múltiplas abas de jogos ou requisições paralelas podem tentar debitar o saldo da mesma carteira no mesmo milissegundo.
@@ -93,7 +95,8 @@ erDiagram
 
 ## 4. As Invariantes Globais Invioláveis
 
-Para resolver esses desafios, a solução implementa 4 invariantes globais aplicadas e garantidas diretamente no schema do banco de dados:
+> [!IMPORTANT]
+> As regras de consistência financeira são garantidas de forma nativa e inviolável no próprio schema do PostgreSQL:
 
 | Invariante | Descrição | Como é Garantido |
 |---|---|---|

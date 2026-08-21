@@ -28,7 +28,21 @@ As mensagens são enviadas para a fila SQS FIFO `wager-transactions.fifo` utiliz
 
 ## 2. Padrão Inbox & Confirmação (ACK) Pós-Commit
 
-Para garantir resiliência contra falhas no consumidor SQS:
+> [!IMPORTANT]
+> **Ordem Inviolável de Confirmação**: O SQS ACK (`DeleteMessageCommand`) ocorre **exclusivamente APÓS o COMMIT bem-sucedido** da transação no PostgreSQL.
+
+```mermaid
+flowchart TD
+    SQS["SQS FIFO Queue"] --> Consumer["SqsConsumerService.handleMessage()"]
+    Consumer --> Transaction["em.transactional(): Iniciar Transação SQL"]
+    
+    Transaction --> InboxCheck{"Já existe em inbox_messages?"}
+    InboxCheck -- Sim --> ACKDirect["Emitir DeleteMessage (ACK Direct)"]
+    InboxCheck -- Não --> Process["Processar Caso de Uso & Gravar inbox_messages"]
+    
+    Process --> Commit["COMMIT SQL"]
+    Commit --> ACK["Emitir DeleteMessageCommand (ACK) no SQS"]
+```
 
 1. **Deduplicação de Mensagem**: O `SqsConsumerService` intercepta o `messageId` e consulta a tabela `inbox_messages` pela chave composta `PRIMARY KEY (consumer_name, message_id)`.
 2. **Processamento Atômico**: O processamento do caso de uso e a gravação da `InboxMessage` ocorrem dentro de uma única transação SQL.
@@ -41,14 +55,16 @@ Para garantir resiliência contra falhas no consumidor SQS:
 
 O worker `OutboxPollerWorker` é responsável por ler os eventos gravados na tabela `outbox_messages` e publicá-los na fila SQS:
 
-- **Locking Distribuído Segura (`SKIP LOCKED`)**:
-  ```sql
-  SELECT * FROM outbox_messages
-  WHERE published_at IS NULL
-    AND (next_attempt_at IS NULL OR next_attempt_at <= NOW())
-  ORDER BY occurred_at ASC
-  FOR UPDATE SKIP LOCKED;
-  ```
+> [!TIP]
+> **Locking Distribuído Segura (`SKIP LOCKED`)**:
+> ```sql
+> SELECT * FROM outbox_messages
+> WHERE published_at IS NULL
+>   AND (next_attempt_at IS NULL OR next_attempt_at <= NOW())
+> ORDER BY occurred_at ASC
+> FOR UPDATE SKIP LOCKED;
+> ```
+
 - **Suporte a Multi-Instâncias**: Múltiplos workers em containers diferentes nunca travam nem publicam a mesma mensagem simultaneamente.
 - **Backoff Exponencial**: Em caso de falha de publicação no SQS, o worker incrementa `attempts` e calcula o próximo envio via `scheduleRetry()`.
 

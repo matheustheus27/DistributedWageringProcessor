@@ -7,7 +7,8 @@ Para facilitar os testes manuais e a homologação por desenvolvedores e QA, dis
 - 🟧 **Postman Collection**: [`docs/wagering-api.postman_collection.json`](file:///p:/Git/GitHub/DistributedWageringProcessor/docs/wagering-api.postman_collection.json)
 - 🟣 **Insomnia Collection**: [`docs/wagering-api.insomnia_collection.json`](file:///p:/Git/GitHub/DistributedWageringProcessor/docs/wagering-api.insomnia_collection.json)
 
-Ambas as coleções possuem variáveis de ambiente pré-configuradas (`baseUrl`, `walletId`, `playerId`) e descrições explicativas em cada rota sem a necessidade de consultar arquivos externos.
+> [!TIP]
+> **Automação Integrada nas Coleções**: Ao executar a requisição `1. Criar Carteira (Create Wallet)`, o `walletId` é automaticamente extraído da resposta e preenchido para todas as chamadas subsequentes sem necessidade de copiar e colar manual!
 
 ---
 

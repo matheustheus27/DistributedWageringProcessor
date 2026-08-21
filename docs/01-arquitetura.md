@@ -15,10 +15,8 @@ src/
     └── infrastructure/           # Unit of Work, Migrações SQL, Guardas de Auth e Telemetria
 ```
 
-### Camadas e Suas Responsabilidades:
-1. **Domínio (`domain/`)**: Regras de negócio puras (`Money`, `Wallet`, `WagerTransaction`, `WalletLedgerEntry`). Sem dependências externas.
-2. **Aplicação (`application/`)**: Casos de uso (`ProcessWagerUseCase`, `OpenWalletUseCase`) e contratos de repositório (Ports).
-3. **Infraestrutura (`infrastructure/`)**: Implementações concretas de repositórios MikroORM, Controllers HTTP e Consumidores SQS (Adapters).
+> [!NOTE]
+> **Isolamento de Framework**: A lógica de domínio (`Money`, `Wallet`, `WagerTransaction`, `WalletLedgerEntry`) não possui importações de frameworks ou ORMs. Todas as interações de IO são mediadas por interfaces (Ports) na camada de aplicação.
 
 ---
 
@@ -82,3 +80,6 @@ stateDiagram-v2
     REJECTED --> [*]: Estado Terminal Imutável
     FAILED --> [*]: Estado Terminal Imutável
 ```
+
+> [!IMPORTANT]
+> **Imutabilidade de Estados Terminais**: Os estados `PROCESSED`, `REJECTED` e `FAILED` são estritamente imutáveis. Uma vez transicionada para um desses estados, nenhuma alteração adicional pode ocorrer na mesma transação.
