@@ -112,25 +112,33 @@ bun run start:dev
 ## 🛠️ Plano de Execução por Fases
 
 ### 🔹 Fase 1: Domain Core & Value Objects
-- **Precisão Financeira (`Money`)**: Classe atômica baseada em `decimal.js` com escala fixa (2 casas decimais) e serialização rigorosa em string (`"25.00"`).
+- **Classe Atômica `Money`**: Baseada em `decimal.js` com escala fixa (2 casas decimais) e serialização rigorosa em string (`"25.00"`).
 - **Entidades de Domínio Encapsuladas**: Construtores privados e factories estáticas (`open`, `create`, `rehydrate`) em `Wallet`, `WagerTransaction` e `WalletLedgerEntry`.
 - **Envelopes Tipados de Eventos**: Subclasses concretas de `IntegrationEvent<T>` (`WalletBalanceChanged`, `WagerTransactionProcessed`, `WagerTransactionRejected`, `WagerTransactionPendingReference`).
 
 ### 🔹 Fase 2: Persistência & Migrations (MikroORM)
 - **Migrations PostgreSQL**: Restrições rigorosas no schema (`CHECK (balance >= 0)`, `CHECK (balance_after >= 0)`, validação aritmética de ledger), chaves únicas compostas e índices parciais (`idx_pending_reference`, `idx_outbox_pending`).
-- **Entidades & Mappers Desacoplados**: Mapeamento bidirecional (`fromDomain()`, `toDomain()`) convertendo tipos SQL para os Value Objects (`Money`) e Agregados de domínio.
+- **Entidades & Mappers Desacoplados**: Mapeamento bidirecional (`fromDomain()`, `toDomain()`) convertendo tipos SQL para Value Objects (`Money`) e Agregados de domínio.
 - **Repositórios Transacionais & Unit of Work**: Repositórios MikroORM integrados ao `DatabaseUnitOfWork` (`em.transactional()`) com suporte a `SELECT FOR UPDATE` e `SKIP LOCKED`.
 
-### 🔹 Fase 3: Casos de Uso & Concorrência
-- **`ProcessWagerUseCase`**: Fluxo atômico manipulando `BET`, `WIN`, `LOSS`, `REFUND` e `ROLLBACK` com trava pessimista na wallet.
-- **`OpenWalletUseCase` & `ReconcileWalletUseCase`**: Abertura de carteiras e auditoria em tempo real comparando extrato SQL vs saldo.
+### 🔹 Fase 3: Casos de Uso & Máquina de Estados
+- **`ProcessWagerUseCase` Unificado (HTTP e SQS)**: Resolução de dependências (`REFUND` e `ROLLBACK`), transição para `PENDING_REFERENCE` em caso de chegada fora de ordem, validação estrita de saldo e rejeição atômica (`REJECTED` com `failureCode` padronizado).
+- **Casos de Uso Auxiliares**: `OpenWalletUseCase`, `GetWalletUseCase`, `GetLedgerUseCase` (paginação por cursor) e `ReconcileWalletUseCase`.
 
-### 🔹 Fase 4: Mensageria & Transactional Outbox
-- **Deduplicação via Inbox**: Registro em `inbox_messages` garantindo at-least-once com ACK somente pós-commit.
-- **Outbox Worker**: Polling desacoplado via `SELECT FOR UPDATE SKIP LOCKED` enviando eventos ao SQS FIFO (`LocalStack`).
+### 🔹 Fase 4: Mensageria, Inbox & Outbox Pattern
+- **SQS Consumer Resiliente**: Política de ACK posterior ao commit e deduplicação persistente via `inbox_messages`.
+- **`OutboxPublisherWorker`**: Polling periódico com locking distribuído via `SELECT FOR UPDATE SKIP LOCKED` do Postgres garantindo entrega *at-least-once*.
+- **`PendingReferenceWorker`**: Worker agendado para reprocessamento de transações `PENDING_REFERENCE` com backoff exponencial.
 
-### 🔹 Fase 5: Testes de Concorrência & Observabilidade
-- **Suíte de Testes**: 50 requisições simultâneas, disputa de saldo, métricas Prometheus e endpoints de saúde.
+### 🔹 Fase 5: Observabilidade, API & Entrypoints
+- **Controllers & DTOs NestJS**: Validações de entrada rigorosas via `class-validator`.
+- **Structured JSON Logging (Pino)**: Logs estruturados com propagação de `correlationId`, `walletId` e `transactionId`.
+- **Health Checks & Métricas**: Endpoints `/health/live`, `/health/ready` e exportador Prometheus em `/metrics` monitorando lag da outbox e concorrência.
+
+### 🔹 Fase 6: Bateria de Testes Automatizados
+- **Unitários**: Invariantes de `Money`, transições de estado do Aggregate e idempotência.
+- **Integração**: Banco PostgreSQL e LocalStack (SQS FIFO Queues).
+- **Concorrência Real**: Cenários de 50 requisições simultâneas na mesma wallet, disputas de saldo (saldo 100 com 2 apostas de 80) e simulação de kill de processo pré-ack para validação de idempotência.
 
 ---
 
