@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wagering-processor
+  labels:
+    app: wagering-processor
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: wagering-processor
+  template:
+    metadata:
+      labels:
+        app: wagering-processor
+    spec:
+      containers:
+        - name: app
+          image: jungle-gaming/distributed-wagering-processor:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: wagering-processor-config
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 5

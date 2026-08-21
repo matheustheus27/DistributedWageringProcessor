@@ -1,0 +1,70 @@
+name: Continuous Integration (CI)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    name: Build, Lint & Automated Test Suite
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: wagering_db
+          POSTGRES_USER: wagering_user
+          POSTGRES_PASSWORD: wagering_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      localstack:
+        image: localstack/localstack:latest
+        env:
+          SERVICES: sqs
+          AWS_DEFAULT_REGION: us-east-1
+        ports:
+          - 4566:4566
+
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Bun Environment
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile || bun install
+
+      - name: Initialize LocalStack SQS FIFO Queues
+        run: |
+          chmod +x ./scripts/init-localstack.sh
+          ./scripts/init-localstack.sh || true
+
+      - name: Run Database Migrations
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: wagering_db
+          DB_USER: wagering_user
+          DB_PASSWORD: wagering_password
+        run: bun run migration:up
+
+      - name: Run Unit Tests
+        run: bun run test
+
+      - name: Run Concurrency & Financial Correctness Tests
+        run: bun run test:concurrency
+
+      - name: Run Chaos Engineering Resilience Test
+        run: bun run test:chaos

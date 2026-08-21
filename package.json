@@ -14,6 +14,9 @@
     "test:chaos": "bun test tests/integration/chaos.test.ts",
     "test:load": "bun scripts/load-test.ts",
     "test:all": "bun test tests/",
+    "dlq:inspect": "bun scripts/dlq-management.ts inspect",
+    "dlq:replay": "bun scripts/dlq-management.ts replay",
+    "dlq:purge": "bun scripts/dlq-management.ts purge",
     "migration:create": "mikro-orm migration:create",
     "migration:up": "mikro-orm migration:up",
     "migration:down": "mikro-orm migration:down"

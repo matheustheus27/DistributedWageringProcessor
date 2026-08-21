@@ -1,0 +1,62 @@
+version: '3'
+
+tasks:
+  default:
+    desc: List all available automation tasks
+    cmds:
+      - task --list
+
+  up:
+    desc: Start PostgreSQL, LocalStack, Prometheus & Grafana in Docker Compose
+    cmds:
+      - docker compose up --build --scale app=3 -d
+
+  down:
+    desc: Stop all Docker Compose containers
+    cmds:
+      - docker compose down
+
+  restart:
+    desc: Restart all Docker Compose containers
+    cmds:
+      - docker compose restart
+
+  migrate:
+    desc: Run PostgreSQL MikroORM database migrations
+    cmds:
+      - bun run migration:up
+
+  test:
+    desc: Run unit tests
+    cmds:
+      - bun run test
+
+  test:concurrency:
+    desc: Run real 50-request parallel concurrency tests
+    cmds:
+      - bun run test:concurrency
+
+  test:chaos:
+    desc: Run chaos engineering process recovery tests
+    cmds:
+      - bun run test:chaos
+
+  test:load:
+    desc: Run automated benchmarking and load test suite
+    cmds:
+      - bun run test:load
+
+  dlq:inspect:
+    desc: Inspect SQS Dead Letter Queue messages
+    cmds:
+      - bun run dlq:inspect
+
+  dlq:replay:
+    desc: Replay DLQ messages back to main queue
+    cmds:
+      - bun run dlq:replay
+
+  dlq:purge:
+    desc: Purge SQS Dead Letter Queue messages
+    cmds:
+      - bun run dlq:purge

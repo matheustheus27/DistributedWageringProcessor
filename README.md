@@ -59,64 +59,31 @@ sequenceDiagram
 
 ---
 
-## 🌟 6 Diferenciais de Alta Engenharia Incorporados
+## 🌟 Recursos Avançados de Engenharia Produção-Ready
 
-1. **⚡ Suite Automatizada de Testes de Carga (`bun run test:load`)**: Script de benchmarking simulando cenários de *Hot Wallet* (100 requisições simultâneas na mesma conta) e injeção massiva de duplicatas, reportando RPS, p50, p95, p99 e taxa de divergência.
-2. **💥 Chaos Engineering & Testes de Resiliência (`bun run test:chaos`)**: Teste de integração automatizado simulando queda de processo (`SIGKILL`) imediatamente após o commit do PostgreSQL, provando que a reentrega da mensagem passa pela Inbox sem duplicar lançamentos.
-3. **📊 Double-Entry Bookkeeping (Partidas Dobradas)**: Suporte a contas contábeis (`PLAYER_LIABILITY`, `HOUSE_PLATFORM`, `PROVIDER_SETTLEMENT`). Cada transação possui lançamentos de débito e crédito estritamente balanceados.
-4. **🔍 Rastreabilidade Distribuída com OpenTelemetry**: SDK de telemetria integrado para rastreamento de spans e propagação de `traceId` / `spanId`.
-5. **📈 Dashboard Operacional Local (Grafana + Prometheus)**: Containers de Prometheus e Grafana pré-configurados subindo no Docker Compose com métricas em tempo real (taxa de transações, outbox lag, latência p95).
-6. **📐 Documentação C4 e Diagrama de Estados (`ARCHITECTURE.md`)**: Diagramas visuais detalhados da máquina de estados da `WagerTransaction` e arquitetura C4 de contêineres.
-
----
-
-## 🎯 As 4 Regras de Ouro do Sistema
-
-1. **Moeda de Verdade (`Money`)**: Dinheiro não é float nem number. É sempre tratado como texto decimal exato com 2 casas (`"25.00"`), sem arredondamentos estranhos do JavaScript.
-2. **Ledger Auditável (Extrato Bancário & Partidas Dobradas)**: Toda entrada ou saída gera lançamentos imutáveis de extrato balanceados entre contas de passivo e receita.
-3. **Idempotência Garantida (Sem Cobrança Dupla)**: Cada operação tem um identificador único. Se a mensagem chegar 50 vezes seguidas, o sistema processa a primeira e responde exatamente a mesma resposta para as outras 49, sem descontar o saldo de novo.
-4. **Proteção Contra Corridas (Pessimistic Locking)**: Quando duas apostas tentam mexer no saldo do mesmo jogador ao mesmo tempo, o banco de dados enfileira e resolve uma por uma com trava de linha (`SELECT FOR UPDATE`), impedindo que o saldo fique negativo.
+1. **⚡ Suite Automatizada de Testes de Carga (`bun run test:load`)**: Script de benchmarking simulando cenários de *Hot Wallet* (100 requisições simultâneas na mesma conta) e injeção massiva de duplicatas.
+2. **💥 Chaos Engineering & Resiliência (`bun run test:chaos`)**: Teste de integração automatizado simulando queda de processo (`SIGKILL`) pós-commit.
+3. **📊 Double-Entry Bookkeeping (Partidas Dobradas)**: Lançamentos contábeis balanceados entre `PLAYER_LIABILITY`, `HOUSE_PLATFORM` e `PROVIDER_SETTLEMENT`.
+4. **🔍 Context Logging & Telemetria**: `AsyncLocalStorage` nativo propagando `correlationId`, `walletId` e `traceId` automaticamente em logs JSON Pino.
+5. **📥 Gestão de DLQ CLI (`bun run dlq:inspect` / `bun run dlq:replay`)**: Ferramenta de inspeção e reprocessamento de mensagens da Dead Letter Queue.
+6. **⚙️ CI/CD Pipeline (GitHub Actions)**: Workflows automatizados em `.github/workflows/ci.yml`.
+7. **☸️ Manifestos Kubernetes Produção-Ready (`k8s/`)**: Deployment com HPA de 3-10 réplicas, ConfigMap, Service e Liveness/Readiness probes.
+8. **🔨 Makefile & Taskfile de Automação**: Atalhos multiplataforma (`make up` / `task up`, `make test` / `task test`, `make test-load` / `task test:load`).
 
 ---
 
 ## 🚀 Como Rodar o Projeto
 
-Você não precisa instalar bancos ou filas na sua máquina local! Tudo roda dentro do **Docker**.
-
-### 1. Subindo a Aplicação + Prometheus + Grafana
-
-Execute o comando abaixo na raiz do projeto:
-
+### Usando Taskfile ou Makefile (Recomendado)
 ```bash
-docker compose up --build --scale app=3
+task up         # Ou 'make up' -> Sobe PostgreSQL, LocalStack, Prometheus e Grafana
+task test       # Ou 'make test' -> Executa testes unitários
+task test:load  # Ou 'make test-load' -> Executa teste de carga e benchmarking
 ```
 
-Esse comando vai subir:
-- 🐘 **PostgreSQL 16**: O banco de dados com todas as restrições financeiras ativas na porta `5432`.
-- 📬 **LocalStack (AWS SQS)**: A fila de mensagens assíncronas FIFO (`wager-transactions.fifo`) na porta `4566`.
-- ⚡ **3 Instâncias da Aplicação NestJS**: Executando com load balancing na porta `3000`.
-- 📊 **Prometheus**: Coletor de métricas na porta `9090`.
-- 📈 **Grafana Dashboard**: Painel operacional em tempo real na porta `3001` (Login: `admin` / `admin`).
-
----
-
-## 🧪 Suíte de Testes & Benchmark
-
+### Usando Docker Compose
 ```bash
-# Testes Unitários (Money, Wallet, Transações)
-bun test tests/unit
-
-# Testes de Concorrência Real (50 requisições simultâneas e disputa de saldo)
-bun test tests/concurrency
-
-# Teste de Chaos Engineering (Simulação de crash pós-commit pré-ACK)
-bun test:chaos
-
-# Teste de Carga e Benchmark (100 requisições simultâneas + Reconciliação)
-bun run test:load
-
-# Executar Todos os Testes
-bun test tests/
+docker compose up --build --scale app=3
 ```
 
 ---
@@ -125,6 +92,9 @@ bun test tests/
 
 ```
 DistributedWageringProcessor/
+├── 📁 .github/                         # Workflows de Integração Contínua (CI/CD)
+│   └── 📁 workflows/
+│       └── ⚙️ ci.yml                    # Pipeline GitHub Actions (Build, Migrações, Testes)
 ├── 📁 src/                             # Código-fonte da aplicação (Hexagonal Architecture)
 │   ├── 📁 core/                        # Núcleo compartilhado DDD (Domain primitives, Result, Errors)
 │   │   ├── 📁 application/             # Monad funcional Result<T, E>
@@ -145,7 +115,7 @@ DistributedWageringProcessor/
 │   │       └── 📁 infrastructure/      # Controller HTTP, DTOs, Entidades e Repositórios MikroORM
 │   ├── 📁 shared/                      # Infraestrutura compartilhada da aplicação
 │   │   ├── 📁 application/             # Contrato IUnitOfWork
-│   │   └── 📁 infrastructure/          # Database UnitOfWork, Migrações SQL, Telemetria OpenTelemetry, Guard e Health
+│   │   └── 📁 infrastructure/          # Database UnitOfWork, Migrações SQL, AsyncLocalStorage, Telemetria e Health
 │   └── 📄 main.ts                      # Ponto de entrada NestJS com Bootstrapping e Pipes
 ├── 📁 tests/                           # Suíte de Testes Automatizados
 │   ├── 📁 unit/                        # Testes unitários (Money, Wallet, WagerTransaction)
@@ -153,12 +123,21 @@ DistributedWageringProcessor/
 │   └── 📁 concurrency/                 # Testes de concorrência e consistência financeira
 ├── 📁 scripts/                         # Scripts de Automação & Load Test
 │   ├── 📜 load-test.ts                 # Script de benchmarking e estresse de carga (bun run test:load)
+│   ├── 📜 dlq-management.ts            # CLI de inspeção e replay de DLQ (bun run dlq:replay)
 │   └── 📜 init-localstack.sh           # Auto-provisionamento de Filas FIFO SQS no LocalStack
+├── 📁 k8s/                             # Manifestos Produção-Ready Kubernetes
+│   ├── 📄 configmap.yaml               # Configurações do Cluster K8s
+│   ├── 📄 deployment.yaml              # Deployment com 3 réplicas e Liveness/Readiness probes
+│   ├── 📄 hpa.yaml                     # HorizontalPodAutoscaler (3-10 pods)
+│   └── 📄 service.yaml                 # ClusterIP Service
 ├── 📁 docker/                          # Configurações de Monitoramento
 │   ├── 📁 grafana/                     # Provisionamento de Dashboards Grafana
 │   └── 📜 prometheus.yml               # Configuração do Prometheus Metrics Scraper
+├── 📋 Taskfile.yml                     # Automação de tarefas multiplataforma (Task)
+├── 🔨 Makefile                         # Comandos de automação GNU Make (make up, test, load)
 ├── 🐳 docker-compose.yml              # Orquestração de Containers (Postgres, LocalStack, App, Prometheus, Grafana)
 ├── 🐳 Dockerfile                       # Containerização usando Bun 1.x Alpine
+├── ⚙️ commitlint.config.js             # Padronização de Conventional Commits
 ├── ⚙️ mikro-orm.config.ts             # Configuração ORM, conexão PostgreSQL e Migrações
 ├── 📜 package.json                    # Dependências da aplicação e scripts de execução Bun
 ├── 📄 tsconfig.json                   # Configuração estrita do TypeScript e Path Aliases (@core, @modules)
