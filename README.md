@@ -1,16 +1,23 @@
 # 🦧 Distributed Wagering Processor — Jungle Gaming
 
-![Bun Version](https://img.shields.io/badge/Bun-1.1-orange?style=for-the-badge&logo=bun)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue?style=for-the-badge&logo=typescript)
-![NestJS](https://img.shields.io/badge/NestJS-10.3-red?style=for-the-badge&logo=nestjs)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue?style=for-the-badge&logo=postgresql)
-![AWS SQS](https://img.shields.io/badge/AWS_SQS-FIFO-yellow?style=for-the-badge&logo=amazonaws)
-![Docker](https://img.shields.io/badge/Docker-Compose-blue?style=for-the-badge&logo=docker)
-![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
+[![Bun Version](https://img.shields.io/badge/Bun-1.1-orange?style=for-the-badge&logo=bun)](https://bun.sh/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+[![NestJS](https://img.shields.io/badge/NestJS-10.3-red?style=for-the-badge&logo=nestjs)](https://nestjs.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue?style=for-the-badge&logo=postgresql)](https://www.postgresql.org/)
+[![AWS SQS](https://img.shields.io/badge/AWS_SQS-FIFO-yellow?style=for-the-badge&logo=amazonaws)](https://aws.amazon.com/sqs/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-blue?style=for-the-badge&logo=docker)](https://www.docker.com/)
+[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 > [!IMPORTANT]
-> **Microserviço financeiro distribuído de alta concorrência**, desenvolvido para o desafio técnico de Backend Developer da **Jungle Gaming**.
-> Garante consistência financeira estrita, idempotência persistente, ledger contábil imutável (Partidas Dobradas) e resiliência total contra falhas distribuídas e redelivery.
+> **Microserviço financeiro distribuído de alta concorrência** para processamento de transações de apostas em tempo real da plataforma **Jungle Gaming**.
+> Garante consistência financeira estrita, idempotência persistente, ledger contábil imutável (Partidas Dobradas) e resiliência total contra falhas distribuídas e redelivery de mensagens.
+
+> [!NOTE]
+> ### 👤 Candidate & Application Info
+> - **Candidato**: Matheus Ferreira
+> - **Perfil no GitHub**: [@matheustheus27](https://github.com/matheustheus27)
+> - **Desafio Técnico**: Distributed Wagering Processor
+> - **Posição**: Backend Developer na **Jungle Gaming** 🦧
 
 ---
 
