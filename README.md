@@ -111,20 +111,19 @@ bun run start:dev
 
 ## 🛠️ Plano de Execução por Fases
 
-A construção do projeto foi dividida em fases bem definidas para garantir isolamento e alta qualidade:
-
 ### 🔹 Fase 1: Domain Core & Value Objects
 - **Precisão Financeira (`Money`)**: Classe atômica baseada em `decimal.js` com escala fixa (2 casas decimais) e serialização rigorosa em string (`"25.00"`).
 - **Entidades de Domínio Encapsuladas**: Construtores privados e factories estáticas (`open`, `create`, `rehydrate`) em `Wallet`, `WagerTransaction` e `WalletLedgerEntry`.
 - **Envelopes Tipados de Eventos**: Subclasses concretas de `IntegrationEvent<T>` (`WalletBalanceChanged`, `WagerTransactionProcessed`, `WagerTransactionRejected`, `WagerTransactionPendingReference`).
 
-### 🔹 Fase 2: Aplicação & Casos de Uso
-- **`ProcessWagerUseCase`**: Fluxo principal manipulando apostas (`BET`), ganhos (`WIN`), derrotas (`LOSS`), estornos (`REFUND`) e reversões (`ROLLBACK`).
-- **`OpenWalletUseCase` & `ReconcileWalletUseCase`**: Criação de carteiras com transação interna `OPENING` e auditoria em tempo real comparando extrato vs saldo.
+### 🔹 Fase 2: Persistência & Migrations (MikroORM)
+- **Migrations PostgreSQL**: Restrições rigorosas no schema (`CHECK (balance >= 0)`, `CHECK (balance_after >= 0)`, validação aritmética de ledger), chaves únicas compostas e índices parciais (`idx_pending_reference`, `idx_outbox_pending`).
+- **Entidades & Mappers Desacoplados**: Mapeamento bidirecional (`fromDomain()`, `toDomain()`) convertendo tipos SQL para os Value Objects (`Money`) e Agregados de domínio.
+- **Repositórios Transacionais & Unit of Work**: Repositórios MikroORM integrados ao `DatabaseUnitOfWork` (`em.transactional()`) com suporte a `SELECT FOR UPDATE` e `SKIP LOCKED`.
 
-### 🔹 Fase 3: Infraestrutura & Persistência MikroORM
-- **Schema PostgreSQL & Constraints**: Locks pessimistas (`SELECT FOR UPDATE`), restrições `CHECK (balance >= 0)`, `CHECK (balance_after >= 0)` e chaves compostas/únicas.
-- **Unit of Work & Migrações**: `DatabaseUnitOfWork` gerenciando a transação atômica SQL.
+### 🔹 Fase 3: Casos de Uso & Concorrência
+- **`ProcessWagerUseCase`**: Fluxo atômico manipulando `BET`, `WIN`, `LOSS`, `REFUND` e `ROLLBACK` com trava pessimista na wallet.
+- **`OpenWalletUseCase` & `ReconcileWalletUseCase`**: Abertura de carteiras e auditoria em tempo real comparando extrato SQL vs saldo.
 
 ### 🔹 Fase 4: Mensageria & Transactional Outbox
 - **Deduplicação via Inbox**: Registro em `inbox_messages` garantindo at-least-once com ACK somente pós-commit.
