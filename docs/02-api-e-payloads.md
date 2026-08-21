@@ -121,39 +121,37 @@ Compara o saldo gravado na tabela `wallets` com o resultado do cálculo do extra
 
 ### `POST /wagering/transactions` — Submeter Transação
 
-#### Fluxo de Execução Interno (Transacional Atômico SQL):
+#### Fluxo de Execução Interno (🔒 Transação Atômica PostgreSQL):
 
 ```mermaid
 flowchart TD
     Req["POST /wagering/transactions"] --> Mid["CorrelationId Middleware"]
     Mid --> UseCase["ProcessWagerUseCase.execute()"]
-    UseCase --> Transaction["em.transactional(): Iniciar Transação SQL"]
+    UseCase --> Transaction["em.transactional(): Transação Atômica SQL"]
     
-    subgraph SQL[" 🔒 Transação Atômica PostgreSQL "]
-        Transaction --> Lock["1. SET LOCAL lock_timeout = '2000ms'\nSELECT FOR UPDATE"]
-        Lock --> Inbox["2. Inserir InboxMessage (deduplicação)"]
-        Inbox --> HashCheck{"3. Validar Idempotência"}
-        
-        HashCheck -->|Chave e Hash Idênticos| Replay["Retornar Resposta Salva\nidempotentReplay: true"]
-        HashCheck -->|Chave Igual, Hash Diferente| Conflict["HTTP 409 Conflict"]
-        HashCheck -->|Nova Transação| KindCheck{"4. Tipo de Transação?"}
-        
-        KindCheck -->|REFUND ou ROLLBACK| RefCheck{"Referência Existe?"}
-        RefCheck -->|Não| PendingRef["Gravar Status: PENDING_REFERENCE"]
-        RefCheck -->|Sim| BalanceCheck{"5. Saldo Suficiente?"}
-        
-        KindCheck -->|BET, WIN ou LOSS| BalanceCheck
-        
-        BalanceCheck -->|Não| Reject["Gravar Status: REJECTED\nINSUFFICIENT_FUNDS"]
-        BalanceCheck -->|Sim| Process["Atualizar Saldo da Wallet\nGravar Status: PROCESSED\nInserir LedgerEntry & Outbox"]
+    Transaction --> Lock["1. SET LOCAL lock_timeout = '2000ms'\nSELECT FOR UPDATE (Lock Pessimista)"]
+    Lock --> Inbox["2. Inserir InboxMessage (Deduplicação SQS)"]
+    Inbox --> HashCheck{"3. Validar Idempotência (payloadHash)"}
+    
+    HashCheck -->|Chave e Hash Idênticos| Replay["Retornar Resposta Salva (idempotentReplay: true)"]
+    HashCheck -->|Chave Igual, Hash Diferente| Conflict["HTTP 409 Conflict"]
+    HashCheck -->|Nova Transação| KindCheck{"4. Tipo de Transação?"}
+    
+    KindCheck -->|REFUND ou ROLLBACK| RefCheck{"Referência Existe?"}
+    RefCheck -->|Não| PendingRef["Gravar Status: PENDING_REFERENCE"]
+    RefCheck -->|Sim| BalanceCheck{"5. Saldo Suficiente?"}
+    
+    KindCheck -->|BET, WIN ou LOSS| BalanceCheck
+    
+    BalanceCheck -->|Não| Reject["Gravar Status: REJECTED (INSUFFICIENT_FUNDS)"]
+    BalanceCheck -->|Sim| Process["Atualizar Saldo da Wallet\nGravar Status: PROCESSED\nInserir LedgerEntry & OutboxMessage"]
 
-        Replay --> Commit["COMMIT SQL"]
-        Reject --> Commit
-        Process --> Commit
-        PendingRef --> Commit
-    end
-
-    Commit --> OutboxWorker["OutboxPollerWorker: SELECT SKIP LOCKED -> Publicar SQS FIFO"]
+    Replay --> Commit["COMMIT SQL"]
+    Reject --> Commit
+    Process --> Commit
+    PendingRef --> Commit
+    
+    Commit --> OutboxWorker["OutboxPollerWorker: Polling SKIP LOCKED -> Publicar SQS FIFO"]
 ```
 
 #### Headers Obligatórios:
