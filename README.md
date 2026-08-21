@@ -152,4 +152,4 @@ DistributedWageringProcessor/
 
 Para entender em detalhes o desenho das tabelas no PostgreSQL, os diagramas de estado C4, o funcionamento do **Transactional Outbox**, OpenTelemetry e os resultados dos benchmarks:
 
-👉 **[Leia o ARCHITECTURE.md](file:///p:/Git/GitHub/DistributedWageringProcessor/ARCHITECTURE.md)**
+👉 **[Leia o ARCHITECTURE.md](/ARCHITECTURE.md)**
