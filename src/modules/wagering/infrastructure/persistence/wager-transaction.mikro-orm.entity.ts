@@ -8,7 +8,7 @@ import { FailureCode } from "@core/errors/failure-codes";
 
 @Entity({ tableName: "wager_transactions" })
 @Unique({ name: "unique_provider_ext_tx", properties: ["providerId", "externalTransactionId"] })
-@Unique({ name: "unique_idempotency_key", properties: ["idempotencyKey"] })
+@Unique({ name: "unique_provider_idempotency_key", properties: ["providerId", "idempotencyKey"] })
 @Index({ name: "idx_wager_status", properties: ["status"] })
 @Index({ name: "idx_wager_ref_ext_tx", properties: ["providerId", "referenceExternalTransactionId"] })
 export class WagerTransactionMikroEntity {

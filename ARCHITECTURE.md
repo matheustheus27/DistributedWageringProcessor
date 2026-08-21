@@ -48,45 +48,62 @@ O sistema adota **Hexagonal Architecture (Ports and Adapters)** orientada a Doma
 
 ---
 
-## 3. Concorrência e Múltiplas Instâncias
+## 3. Design do Banco de Dados & Constraints Invioláveis
 
-A **unidade de concorrência é a `walletId`**.
+As regras de consistência financeira e idempotência são garantidas no próprio schema do PostgreSQL:
 
-### Estratégia de Lock
-Para suportar **3+ instâncias concorrentes da aplicação** sem *lost updates* nem saldos negativos:
+### `wallets`
+- `balance NUMERIC(18, 2) NOT NULL CHECK (balance >= 0)`
+- `UNIQUE (player_id, currency)`
+- `version INT NOT NULL DEFAULT 1`
 
-1. **Pessimistic Row Locking (`SELECT FOR UPDATE`)**:
-   Ao iniciar o caso de uso `ProcessWagerUseCase`, a wallet envolvida é bloqueada via `em.findOne(WalletMikroEntity, { id }, { lockMode: LockMode.PESSIMISTIC_WRITE })` dentro do Unit of Work (`em.transactional()`).
-2. **PostgreSQL Schema Constraints**:
-   - `CONSTRAINT check_non_negative_balance CHECK (balance >= 0)`
-   - `CONSTRAINT unique_player_currency UNIQUE (player_id, currency)`
-   - `CONSTRAINT unique_idempotency_key UNIQUE (idempotency_key)`
-   - `CONSTRAINT unique_inbox_consumer_msg UNIQUE (consumer_name, message_id)`
+### `wallet_ledger_entries`
+- `CHECK (balance_after >= 0)`
+- `CHECK (balance_before + (CASE WHEN direction = 'CREDIT' THEN amount ELSE -amount END) = balance_after)`
+- **Imutabilidade Estrutural**: Permissões de `INSERT` apenas (sem `UPDATE`/`DELETE`).
 
-Essa combinação garante que 50 apostas simultâneas na mesma wallet sejam serializadas no banco de dados, resultando em execução totalmente correta.
+### `wager_transactions`
+- `UNIQUE (provider_id, idempotency_key)`
+- `UNIQUE (provider_id, external_transaction_id)`
+- Índice Parcial de Pendências:
+  ```sql
+  CREATE INDEX idx_pending_reference ON wager_transactions (status, created_at)
+  WHERE status = 'PENDING_REFERENCE';
+  ```
+
+### `inbox_messages`
+- Chave Primária Composta: `PRIMARY KEY (consumer_name, message_id)`
+
+### `outbox_messages`
+- Índice Parcial de Polling:
+  ```sql
+  CREATE INDEX idx_outbox_pending ON outbox_messages (published_at, next_attempt_at)
+  WHERE published_at IS NULL;
+  ```
 
 ---
 
-## 4. Idempotência Persistente e Transactional Outbox / Inbox
+## 4. Estratégia de Concorrência e Transacionalidade
 
-### Inbox Pattern (SQS)
-Mensagens consumidas do SQS são salvas na tabela `inbox_messages` dentro da transação atômica do banco. Se uma mensagem for entregue duplicada, o consumidor detecta o registro e ignora o reprocessamento. O `ACK` no SQS ocorre **apenas após o commit** no PostgreSQL.
+Para evitar *lost updates* sob alto paralelismo em múltiplas instâncias:
 
-### HTTP Idempotency Key
-1. `payloadHash`: Hash SHA-256 do JSON canônico (chaves ordenadas) do payload de negócio.
-2. **Replay Idempotente**: Se o `idempotencyKey` já existir e o `payloadHash` for idêntico, retorna exatamente a resposta original com `idempotentReplay: true`.
-3. **Conflito de Payload**: Se o `idempotencyKey` for reutilizado com payload diferente, o sistema rejeita com HTTP `409 Conflict`.
-
-### Transactional Outbox
-1. Altera saldo, grava ledger, insere transação, grava inbox e grava `OutboxMessage` em uma **única transação SQL atômica**.
-2. **Worker Desacoplado**: O `OutboxPollerWorker` lê eventos pendentes usando `SELECT ... FOR UPDATE SKIP LOCKED`, garantindo que múltiplas instâncias da aplicação publiquem eventos no SQS sem duplicação ou travamento.
+1. **Pessimistic Locking com Timeout**: O processamento de cada transação bloqueia a linha da carteira via `SELECT ... FOR UPDATE` ordenado pelo `wallet_id`.
+2. **Canonical Payload Hash**: Validação de idempotência via SHA-256 de chaves JSON ordenadas.
+   - **Hash idêntico**: Retorna o estado persistido (`idempotentReplay: true`).
+   - **Hash divergente**: Lança `IdempotencyConflictError` (HTTP 409).
+3. **Atomic Transaction Boundary**: Dentro de uma única transação gerenciada pelo `EntityManager.transactional()` do MikroORM:
+   1. Leitura bloqueante da Wallet;
+   2. Gravação/atualização do registro de `InboxMessage`;
+   3. Persistência da `WagerTransaction`;
+   4. Atualização do saldo da `Wallet` e inserção na `WalletLedgerEntry`;
+   5. Inserção do evento encapsulado na `OutboxMessage`.
 
 ---
 
 ## 5. Referências Fora de Ordem (`PENDING_REFERENCE`)
 
 1. Transações `REFUND` ou `ROLLBACK` cuja transação referenciada ainda não chegou são salvas com status `PENDING_REFERENCE`.
-2. O `PendingReferenceWorker` reprocessa periodicamente essas transações com backoff exponencial.
+2. O `PendingReferenceWorker` reprocessa periodicamente essas transações com backoff exponencial via índice `idx_pending_reference`.
 3. Caso a referência não chegue no limite de tempo (TTL de 5 min), a transação é rejeitada com `FailureCode.REFERENCE_NOT_FOUND` e o evento correspondente é publicado.
 
 ---
