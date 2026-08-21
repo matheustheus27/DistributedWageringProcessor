@@ -9,6 +9,11 @@ export class WalletMikroRepository implements IWalletRepository {
   constructor(private readonly em: EntityManager) {}
 
   public async findById(id: string, lock: boolean = false): Promise<Wallet | null> {
+    if (lock) {
+      // Set explicit 2-second lock timeout to fail fast under extreme contention & prevent deadlocks
+      await this.em.getKnex().raw("SET LOCAL lock_timeout = '2000ms'");
+    }
+
     const entity = await this.em.findOne(
       WalletMikroEntity,
       { id },
@@ -22,6 +27,10 @@ export class WalletMikroRepository implements IWalletRepository {
     currency: string,
     lock: boolean = false,
   ): Promise<Wallet | null> {
+    if (lock) {
+      await this.em.getKnex().raw("SET LOCAL lock_timeout = '2000ms'");
+    }
+
     const entity = await this.em.findOne(
       WalletMikroEntity,
       { playerId, currency },

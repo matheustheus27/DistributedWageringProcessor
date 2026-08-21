@@ -66,9 +66,10 @@ sequenceDiagram
 3. **📊 Double-Entry Bookkeeping (Partidas Dobradas)**: Lançamentos contábeis balanceados entre `PLAYER_LIABILITY`, `HOUSE_PLATFORM` e `PROVIDER_SETTLEMENT`.
 4. **🔍 Context Logging & Telemetria**: `AsyncLocalStorage` nativo propagando `correlationId`, `walletId` e `traceId` automaticamente em logs JSON Pino.
 5. **📥 Gestão de DLQ CLI (`bun run dlq:inspect` / `bun run dlq:replay`)**: Ferramenta de inspeção e reprocessamento de mensagens da Dead Letter Queue.
-6. **⚙️ CI/CD Pipeline (GitHub Actions)**: Workflows automatizados em `.github/workflows/ci.yml`.
-7. **☸️ Manifestos Kubernetes Produção-Ready (`k8s/`)**: Deployment com HPA de 3-10 réplicas, ConfigMap, Service e Liveness/Readiness probes.
-8. **🔨 Makefile & Taskfile de Automação**: Atalhos multiplataforma (`make up` / `task up`, `make test` / `task test`, `make test-load` / `task test:load`).
+6. **🔌 Postman & Insomnia Collections Prontas**: Coleções interativas prontas em `docs/` com documentação embutida nos próprios endpoints.
+7. **⚙️ CI/CD Pipeline (GitHub Actions)**: Workflows automatizados em `.github/workflows/ci.yml`.
+8. **☸️ Manifestos Kubernetes Produção-Ready (`k8s/`)**: Deployment com HPA de 3-10 réplicas, ConfigMap, Service e Liveness/Readiness probes.
+9. **🔨 Makefile & Taskfile de Automação**: Atalhos multiplataforma (`make up` / `task up`, `make test` / `task test`, `make test-load` / `task test:load`).
 
 ---
 
@@ -101,7 +102,10 @@ DistributedWageringProcessor/
 │   ├── 📄 02-api-e-payloads.md         # Especificação completa da API, DTOs e FailureCodes
 │   ├── 📄 03-mensageria-e-sqs.md       # Payloads SQS FIFO, Inbox Pattern e DLQ CLI
 │   ├── 📄 04-concorrencia-e-locks.md   # Pessimistic Locking, Hash Canônico e Double-Entry
-│   └── 📄 05-guia-de-execucao.md       # Comandos de automação, Grafana e Testes de Carga
+│   ├── 📄 05-guia-de-execucao.md       # Comandos de automação, Grafana e Testes de Carga
+│   ├── 📄 06-testes-e-qualidade.md     # Documentação detalhada de cada tipo de teste
+│   ├── 📜 wagering-api.postman_collection.json  # Coleção Postman com Documentação Embutida
+│   └── 📜 wagering-api.insomnia_collection.json # Coleção Insomnia com Documentação Embutida
 ├── 📁 src/                             # Código-fonte da aplicação (Hexagonal Architecture)
 │   ├── 📁 core/                        # Núcleo compartilhado DDD (Domain primitives, Result, Errors)
 │   │   ├── 📁 application/             # Monad funcional Result<T, E>
@@ -129,6 +133,7 @@ DistributedWageringProcessor/
 │   ├── 📁 integration/                 # Testes de integração e Chaos Engineering (chaos.test.ts)
 │   └── 📁 concurrency/                 # Testes de concorrência e consistência financeira
 ├── 📁 scripts/                         # Scripts de Automação & Load Test
+│   ├── 📜 smoke-test.ts                # Teste E2E rápido de fumaça e corrida de saldo (bun run test:smoke)
 │   ├── 📜 load-test.ts                 # Script de benchmarking e estresse de carga (bun run test:load)
 │   ├── 📜 dlq-management.ts            # CLI de inspeção e replay de DLQ (bun run dlq:replay)
 │   └── 📜 init-localstack.sh           # Auto-provisionamento de Filas FIFO SQS no LocalStack
@@ -163,5 +168,6 @@ Para explorar a documentação completa por tópicos:
 - 📐 **[01 — Arquitetura do Sistema & Diagramas](docs/01-arquitetura.md)**: Camadas da Arquitetura Hexagonal, Diagrama C4 de Contêineres e Máquina de Estados.
 - 📡 **[02 — Especificação Completa da API & Payloads](docs/02-api-e-payloads.md)**: Todos os endpoints HTTP, exemplos de request/response e tabela de `FailureCode`.
 - 📬 **[03 — Mensageria, SQS FIFO & Outbox Pattern](docs/03-mensageria-e-sqs.md)**: Formato de mensagens SQS, Inbox deduplication, Outbox worker e comandos CLI da DLQ.
-- 🔒 **[04 — Concorrência, Locking & Double-Entry](docs/04-concorrencia-e-locks.md)**: Pessimistic locking (`SELECT FOR UPDATE`), hash canônico SHA-256 e partidas dobradas.
+- 🔒 **[04 — Concorrência, Locking & Double-Entry](docs/04-concorrencia-e-locks.md)**: Pessimistic Locking (`SELECT FOR UPDATE`), hash canônico SHA-256 e partidas dobradas.
 - 🚀 **[05 — Guia de Execução & Testes](docs/05-guia-de-execucao.md)**: Automação via Taskfile/Makefile, Dashboard Grafana e relatório de testes de carga.
+- 🧪 **[06 — Suíte de Testes & Garantia de Qualidade](docs/06-testes-e-qualidade.md)**: Documentação detalhada dos testes unitários, concorrência, chaos engineering, smoke test e load test.

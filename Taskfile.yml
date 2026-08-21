@@ -41,6 +41,11 @@ tasks:
     cmds:
       - bun run test:chaos
 
+  test:smoke:
+    desc: Run E2E smoke test (2 parallel bets of 80 BRL on 100 BRL balance + reconciliation)
+    cmds:
+      - bun run test:smoke
+
   test:load:
     desc: Run automated benchmarking and load test suite
     cmds:

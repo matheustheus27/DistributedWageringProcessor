@@ -1,0 +1,133 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-08-21T17:00:00.000Z",
+  "__export_source": "insomnia.desktop.app:v9.2.0",
+  "resources": [
+    {
+      "_id": "wrk_wagering_processor",
+      "_type": "workspace",
+      "name": "Distributed Wagering Processor API (Jungle Gaming)",
+      "description": "Documentação e coleção interativa de APIs do Processador Financeiro de Apostas.",
+      "scope": "design"
+    },
+    {
+      "_id": "env_base_env",
+      "_type": "environment",
+      "parentId": "wrk_wagering_processor",
+      "name": "Base Environment",
+      "data": {
+        "baseUrl": "http://localhost:3000",
+        "walletId": "",
+        "playerId": "player-insomnia-888"
+      }
+    },
+    {
+      "_id": "req_1_create_wallet",
+      "_type": "request",
+      "parentId": "wrk_wagering_processor",
+      "name": "1. Criar Carteira (Create Wallet)",
+      "description": "Cria uma nova carteira para o jogador com saldo inicial de R$ 1000.00 BRL.\n\n### Resposta Esperada (201 Created):\n{\n  \"id\": \"...\",\n  \"playerId\": \"player-insomnia-888\",\n  \"balance\": { \"amount\": \"1000.00\", \"currency\": \"BRL\" },\n  \"version\": 1\n}",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/wallets",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"playerId\": \"{{ _.playerId }}\",\n  \"initialBalance\": {\n    \"amount\": \"1000.00\",\n    \"currency\": \"BRL\"\n  }\n}"
+      }
+    },
+    {
+      "_id": "req_2_get_wallet",
+      "_type": "request",
+      "parentId": "wrk_wagering_processor",
+      "name": "2. Consultar Saldo da Carteira (Get Wallet)",
+      "description": "Retorna o estado atual da carteira e seu saldo acumulado.",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/wallets/{{ _.walletId }}",
+      "headers": []
+    },
+    {
+      "_id": "req_3_submit_bet",
+      "_type": "request",
+      "parentId": "wrk_wagering_processor",
+      "name": "3. Submeter Aposta (Submit BET)",
+      "description": "Debita R$ 25.00 BRL da carteira do jogador com trava pessimista de linha no PostgreSQL (`SELECT FOR UPDATE`).\n\n### Resposta Esperada (200 OK):\n{\n  \"transactionId\": \"...\",\n  \"status\": \"PROCESSED\",\n  \"balance\": { \"amount\": \"975.00\", \"currency\": \"BRL\" },\n  \"idempotentReplay\": false\n}",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/wagering/transactions",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Idempotency-Key", "value": "insomnia:bet-2001" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"providerId\": \"insomnia\",\n  \"externalTransactionId\": \"bet-2001\",\n  \"playerId\": \"{{ _.playerId }}\",\n  \"walletId\": \"{{ _.walletId }}\",\n  \"roundId\": \"round-101\",\n  \"gameId\": \"fortune-ox\",\n  \"kind\": \"BET\",\n  \"money\": { \"amount\": \"25.00\", \"currency\": \"BRL\" }\n}"
+      }
+    },
+    {
+      "_id": "req_4_replay_bet",
+      "_type": "request",
+      "parentId": "wrk_wagering_processor",
+      "name": "4. Testar Idempotência (Replay BET)",
+      "description": "Envia a mesma chave e payload da aposta anterior. Retorna a resposta original com `idempotentReplay: true` sem duplicar débitos.",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/wagering/transactions",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Idempotency-Key", "value": "insomnia:bet-2001" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"providerId\": \"insomnia\",\n  \"externalTransactionId\": \"bet-2001\",\n  \"playerId\": \"{{ _.playerId }}\",\n  \"walletId\": \"{{ _.walletId }}\",\n  \"roundId\": \"round-101\",\n  \"gameId\": \"fortune-ox\",\n  \"kind\": \"BET\",\n  \"money\": { \"amount\": \"25.00\", \"currency\": \"BRL\" }\n}"
+      }
+    },
+    {
+      "_id": "req_5_submit_win",
+      "_type": "request",
+      "parentId": "wrk_wagering_processor",
+      "name": "5. Submeter Ganho (Submit WIN)",
+      "description": "Credita R$ 50.00 BRL referente a um ganho na aposta.",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/wagering/transactions",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Idempotency-Key", "value": "insomnia:win-2002" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"providerId\": \"insomnia\",\n  \"externalTransactionId\": \"win-2002\",\n  \"playerId\": \"{{ _.playerId }}\",\n  \"walletId\": \"{{ _.walletId }}\",\n  \"roundId\": \"round-101\",\n  \"gameId\": \"fortune-ox\",\n  \"kind\": \"WIN\",\n  \"money\": { \"amount\": \"50.00\", \"currency\": \"BRL\" }\n}"
+      }
+    },
+    {
+      "_id": "req_6_get_ledger",
+      "_type": "request",
+      "parentId": "wrk_wagering_processor",
+      "name": "6. Consultar Extrato (Get Ledger)",
+      "description": "Retorna o extrato imutável com lançamentos de débito/crédito e contas contábeis.",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/wallets/{{ _.walletId }}/ledger?limit=50",
+      "headers": []
+    },
+    {
+      "_id": "req_7_reconcile_balance",
+      "_type": "request",
+      "parentId": "wrk_wagering_processor",
+      "name": "7. Reconciliar Saldo (Reconcile Balance)",
+      "description": "Executa a auditoria financeira comparando o saldo atual com a soma do extrato.",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/wallets/{{ _.walletId }}/reconciliation",
+      "headers": []
+    },
+    {
+      "_id": "req_8_health_ready",
+      "_type": "request",
+      "parentId": "wrk_wagering_processor",
+      "name": "8. Health Check Readiness",
+      "description": "Probe de saúde para verificar prontidão do container NestJS e conexão PostgreSQL.",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/health/ready",
+      "headers": []
+    }
+  ]
+}

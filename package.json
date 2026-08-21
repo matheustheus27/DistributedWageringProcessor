@@ -12,6 +12,7 @@
     "test:integration": "bun test tests/integration",
     "test:concurrency": "bun test tests/concurrency",
     "test:chaos": "bun test tests/integration/chaos.test.ts",
+    "test:smoke": "bun scripts/smoke-test.ts",
     "test:load": "bun scripts/load-test.ts",
     "test:all": "bun test tests/",
     "dlq:inspect": "bun scripts/dlq-management.ts inspect",

@@ -1,0 +1,159 @@
+{
+  "info": {
+    "_postman_id": "9a00e46e-c0a5-476b-852a-1825d64d801b",
+    "name": "Distributed Wagering Processor API (Jungle Gaming)",
+    "description": "# 🦧 Distributed Wagering Processor API\n\nDocumentação interativa completa para desenvolvedores e equipe de QA.\n\n## 💡 Conceitos Fundamentais\n- **Idempotency-Key**: Obrigatório em transações (`POST /wagering/transactions`). Garante que requisições repetidas retornem a resposta original sem duplicar débitos/créditos (`idempotentReplay: true`).\n- **Precisão Decimal (`Money`)**: Dinheiro é tratado estritamente como string com 2 casas decimais (ex.: `\"25.00\"`). Não use floats numéricos.\n- **Transacionalidade Atômica**: Atualização de saldo, inserção no extrato (Ledger), registro de Inbox e evento de Outbox ocorrem dentro de uma única transação SQL com Pessimistic Lock (`SELECT FOR UPDATE`).\n\n## ⚠️ Tabela de FailureCodes\n- `INSUFFICIENT_FUNDS`: Saldo insuficiente para débito.\n- `CURRENCY_MISMATCH`: Moeda divergente da carteira.\n- `DUPLICATE_TRANSACTION`: Mesma chave externa já registrada.\n- `REFERENCE_NOT_FOUND`: Transação de referência em REFUND/ROLLBACK não encontrada.\n- `IDEMPOTENCY_PAYLOAD_MISMATCH`: Mesma chave de idempotência usada com payload diferente (HTTP 409).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "walletId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "playerId",
+      "value": "player-postman-777",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Criar Carteira (Create Wallet)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"playerId\": \"{{playerId}}\",\n  \"initialBalance\": {\n    \"amount\": \"1000.00\",\n    \"currency\": \"BRL\"\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/wallets",
+          "host": ["{{baseUrl}}"],
+          "path": ["wallets"]
+        },
+        "description": "Cria uma nova carteira para o jogador com saldo inicial.\n\n### Resposta Esperada (201 Created):\n```json\n{\n  \"id\": \"0192f291-27dd-7d3f-8071-5f8685deef37\",\n  \"playerId\": \"player-postman-777\",\n  \"balance\": { \"amount\": \"1000.00\", \"currency\": \"BRL\" },\n  \"version\": 1\n}\n```"
+      }
+    },
+    {
+      "name": "2. Consultar Saldo da Carteira (Get Wallet)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/wallets/{{walletId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["wallets", "{{walletId}}"]
+        },
+        "description": "Retorna o estado atual da carteira, seu saldo acumulado e versão de atualização.\n\n### Resposta Esperada (200 OK):\n```json\n{\n  \"id\": \"...\",\n  \"playerId\": \"player-postman-777\",\n  \"balance\": { \"amount\": \"1000.00\", \"currency\": \"BRL\" },\n  \"version\": 1\n}\n```"
+      }
+    },
+    {
+      "name": "3. Submeter Aposta (Submit BET)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Idempotency-Key", "value": "postman:bet-1001" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"providerId\": \"postman\",\n  \"externalTransactionId\": \"bet-1001\",\n  \"playerId\": \"{{playerId}}\",\n  \"walletId\": \"{{walletId}}\",\n  \"roundId\": \"round-42\",\n  \"gameId\": \"fortune-tiger\",\n  \"kind\": \"BET\",\n  \"money\": { \"amount\": \"25.00\", \"currency\": \"BRL\" }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/wagering/transactions",
+          "host": ["{{baseUrl}}"],
+          "path": ["wagering", "transactions"]
+        },
+        "description": "Debita o valor da aposta da carteira do jogador com trava de linha (`SELECT FOR UPDATE`).\n\n### Resposta Esperada — Sucesso (200 OK):\n```json\n{\n  \"transactionId\": \"0192f298-345e-7e38-af88-e43f851a819d\",\n  \"status\": \"PROCESSED\",\n  \"balance\": { \"amount\": \"975.00\", \"currency\": \"BRL\" },\n  \"idempotentReplay\": false\n}\n```\n\n### Resposta Esperada — Saldo Insuficiente (200 OK):\n```json\n{\n  \"transactionId\": \"...\",\n  \"status\": \"REJECTED\",\n  \"balance\": { \"amount\": \"10.00\", \"currency\": \"BRL\" },\n  \"idempotentReplay\": false,\n  \"failureCode\": \"INSUFFICIENT_FUNDS\"\n}\n```"
+      }
+    },
+    {
+      "name": "4. Testar Idempotência (Replay BET)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Idempotency-Key", "value": "postman:bet-1001" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"providerId\": \"postman\",\n  \"externalTransactionId\": \"bet-1001\",\n  \"playerId\": \"{{playerId}}\",\n  \"walletId\": \"{{walletId}}\",\n  \"roundId\": \"round-42\",\n  \"gameId\": \"fortune-tiger\",\n  \"kind\": \"BET\",\n  \"money\": { \"amount\": \"25.00\", \"currency\": \"BRL\" }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/wagering/transactions",
+          "host": ["{{baseUrl}}"],
+          "path": ["wagering", "transactions"]
+        },
+        "description": "Envia a mesma requisição anterior. O sistema deve detectar a chave duplicada e retornar `idempotentReplay: true` sem descontar o saldo novamente.\n\n### Resposta Esperada (200 OK):\n```json\n{\n  \"transactionId\": \"0192f298-345e-7e38-af88-e43f851a819d\",\n  \"status\": \"PROCESSED\",\n  \"balance\": { \"amount\": \"975.00\", \"currency\": \"BRL\" },\n  \"idempotentReplay\": true\n}\n```"
+      }
+    },
+    {
+      "name": "5. Submeter Ganho (Submit WIN)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Idempotency-Key", "value": "postman:win-1002" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"providerId\": \"postman\",\n  \"externalTransactionId\": \"win-1002\",\n  \"playerId\": \"{{playerId}}\",\n  \"walletId\": \"{{walletId}}\",\n  \"roundId\": \"round-42\",\n  \"gameId\": \"fortune-tiger\",\n  \"kind\": \"WIN\",\n  \"money\": { \"amount\": \"50.00\", \"currency\": \"BRL\" }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/wagering/transactions",
+          "host": ["{{baseUrl}}"],
+          "path": ["wagering", "transactions"]
+        },
+        "description": "Credita o valor de um prêmio na carteira do jogador.\n\n### Resposta Esperada (200 OK):\n```json\n{\n  \"transactionId\": \"...\",\n  \"status\": \"PROCESSED\",\n  \"balance\": { \"amount\": \"1025.00\", \"currency\": \"BRL\" },\n  \"idempotentReplay\": false\n}\n```"
+      }
+    },
+    {
+      "name": "6. Consultar Extrato (Get Ledger)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/wallets/{{walletId}}/ledger?limit=50",
+          "host": ["{{baseUrl}}"],
+          "path": ["wallets", "{{walletId}}", "ledger"],
+          "query": [{ "key": "limit", "value": "50" }]
+        },
+        "description": "Retorna o histórico contábil auditável com contas de passivo e receita (Double-Entry Bookkeeping).\n\n### Resposta Esperada (200 OK):\n```json\n{\n  \"entries\": [\n    {\n      \"direction\": \"DEBIT\",\n      \"accountType\": \"PLAYER_LIABILITY\",\n      \"money\": { \"amount\": \"25.00\", \"currency\": \"BRL\" },\n      \"balanceBefore\": { \"amount\": \"1000.00\", \"currency\": \"BRL\" },\n      \"balanceAfter\": { \"amount\": \"975.00\", \"currency\": \"BRL\" }\n    }\n  ]\n}\n```"
+      }
+    },
+    {
+      "name": "7. Reconciliar Saldo (Reconcile Balance)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/wallets/{{walletId}}/reconciliation",
+          "host": ["{{baseUrl}}"],
+          "path": ["wallets", "{{walletId}}", "reconciliation"]
+        },
+        "description": "Audita o saldo gravado na carteira comparando com a soma de todas as entradas do extrato.\n\n### Resposta Esperada (200 OK):\n```json\n{\n  \"walletId\": \"...\",\n  \"storedBalance\": { \"amount\": \"1025.00\", \"currency\": \"BRL\" },\n  \"calculatedBalance\": { \"amount\": \"1025.00\", \"currency\": \"BRL\" },\n  \"difference\": { \"amount\": \"0.00\", \"currency\": \"BRL\" },\n  \"consistent\": true\n}\n```"
+      }
+    },
+    {
+      "name": "8. Health Check Readiness",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health/ready",
+          "host": ["{{baseUrl}}"],
+          "path": ["health", "ready"]
+        },
+        "description": "Verifica se a aplicação e o banco PostgreSQL estão prontos para receber tráfego."
+      }
+    }
+  ]
+}

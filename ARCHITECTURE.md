@@ -95,7 +95,6 @@ graph TB
 
     App1 -.->|Outbox Poller SKIP LOCKED| SQS
     App2 -.->|Outbox Poller SKIP LOCKED| SQS
-    App3 -.->|Outbox Poller SKIP LOCKED| SQS
 
     Prometheus -->|Scrape /metrics| App1
     Grafana -->|Query Datasource| Prometheus
@@ -103,7 +102,31 @@ graph TB
 
 ---
 
-## 4. Correção Financeira, Moeda e Double-Entry Bookkeeping
+## 4. Análise Explícita de Trade-offs Arquiteturais
+
+### ⚖️ 1. Pessimistic Locking vs. Optimistic Locking
+- **Decisão**: Utilização de Pessimistic Row Locking (`SELECT FOR UPDATE` com `SET LOCAL lock_timeout = '2000ms'`).
+- **Justificativa**: Em jogos de cassino de ritmo acelerado (*hot wallets*), um jogador ou bot pode disparar dezenas de apostas simultâneas. O *Optimistic Locking* (baseado em versão) causaria uma avalanche de exceções de concorrência e exigiria retries caros na camada de aplicação. O lock pessimista serializa a execução na carteira diretamente no motor do PostgreSQL com custo mínimo e previsibilidade total.
+
+### ⚖️ 2. Transactional Outbox Polling (`SKIP LOCKED`) vs. CDC (Debezium/Kafka)
+- **Decisão**: Outbox Worker periódico com `SELECT ... FOR UPDATE SKIP LOCKED`.
+- **Justificativa**: Embora Change Data Capture (CDC) com Debezium/Kafka seja ideal para volumes de escala de hiper-crescimento, ele introduz uma alta complexidade operacional (conectores Kafka, gerenciamento de zookeeper/kraft e esquemas). O polling com `SKIP LOCKED` oferece performance de centenas de requisições por segundo mantendo a simplicidade de implantação em Docker Compose e Kubernetes.
+
+### ⚖️ 3. Advisory Locks (`pg_advisory_xact_lock`)
+- **Documentação de Uso**: Para rotinas pesadas de reconciliação em lote ou execução de migrações concorrentes entre instâncias, o uso de `pg_advisory_xact_lock(bigint)` é recomendado como trava leve em memória sem prender a tabela de carteiras.
+
+---
+
+## 5. Decisão de Autenticação Formalizada
+
+Conforme as diretrizes da **Seção 2** do desafio:
+- A autenticação não pontua na avaliação e foi projetada com um ponto de extensão bem delimitado: o `ProviderAuthGuard` e a porta `ProviderIdentityPort`.
+- O código está pronto para receber verificação de tokens JWT/OIDC (integrando com Keycloak ou Zitadel).
+- Em ambiente de testes local, o guard opera de forma transparente sem impor tabelas artesanais de usuários/senhas.
+
+---
+
+## 6. Correção Financeira, Moeda e Double-Entry Bookkeeping
 
 1. **Representação Interna**: Utiliza `Decimal.js` envelopado no Value Object `Money` imutável.
 2. **Escala e Precisão**:
@@ -121,7 +144,7 @@ graph TB
 
 ---
 
-## 5. Design do Banco de Dados & Constraints Invioláveis
+## 7. Design do Banco de Dados & Constraints Invioláveis
 
 As regras de consistência financeira e idempotência são garantidas no próprio schema do PostgreSQL:
 
@@ -157,24 +180,7 @@ As regras de consistência financeira e idempotência são garantidas no própri
 
 ---
 
-## 6. Estratégia de Concorrência e Transacionalidade
-
-Para evitar *lost updates* sob alto paralelismo em múltiplas instâncias:
-
-1. **Pessimistic Locking com Timeout**: O processamento de cada transação bloqueia a linha da carteira via `SELECT ... FOR UPDATE` ordenado pelo `wallet_id`.
-2. **Canonical Payload Hash**: Validação de idempotência via SHA-256 de chaves JSON ordenadas.
-   - **Hash idêntico**: Retorna o estado persistido (`idempotentReplay: true`).
-   - **Hash divergente**: Lança `IdempotencyConflictError` (HTTP 409).
-3. **Atomic Transaction Boundary**: Dentro de uma única transação gerenciada pelo `EntityManager.transactional()` do MikroORM:
-   1. Leitura bloqueante da Wallet;
-   2. Gravação/atualização do registro de `InboxMessage`;
-   3. Persistência da `WagerTransaction`;
-   4. Atualização do saldo da `Wallet` e inserção na `WalletLedgerEntry`;
-   5. Inserção do evento encapsulado na `OutboxMessage`.
-
----
-
-## 7. Suíte Automatizada de Testes de Carga & Chaos Engineering
+## 8. Suíte Automatizada de Testes de Carga & Chaos Engineering
 
 ### Testes de Carga (`bun run test:load`)
 - Script de estresse em `scripts/load-test.ts` simulando cenários de *Hot Wallet* (100 requisições simultâneas na mesma conta) e injeção de duplicatas.

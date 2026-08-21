@@ -1,4 +1,4 @@
-.PHONY: help up down restart test test-unit test-concurrency test-chaos test-load migrate dlq-inspect dlq-replay
+.PHONY: help up down restart test test-unit test-concurrency test-chaos test-smoke test-load migrate dlq-inspect dlq-replay
 
 help:
 	@echo "=========================================================================="
@@ -11,6 +11,7 @@ help:
 	@echo "  make test             - Run all unit tests"
 	@echo "  make test-concurrency - Run real 50-request parallel concurrency tests"
 	@echo "  make test-chaos       - Run chaos engineering process recovery tests"
+	@echo "  make smoke-test       - Run E2E smoke test (2 parallel bets on 100 BRL balance)"
 	@echo "  make test-load        - Run automated benchmarking and load test suite"
 	@echo "  make dlq-inspect      - Inspect SQS Dead Letter Queue messages"
 	@echo "  make dlq-replay       - Replay DLQ messages back to main queue"
@@ -36,6 +37,9 @@ test-concurrency:
 
 test-chaos:
 	bun run test:chaos
+
+smoke-test:
+	bun run test:smoke
 
 test-load:
 	bun run test:load

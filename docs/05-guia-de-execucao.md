@@ -1,6 +1,17 @@
 # 05 — Guia de Execução & Testes 🚀
 
-## 1. Comandos de Automação (Makefile & Taskfile)
+## 1. Coleções do Postman e Insomnia 🔌
+
+Para facilitar os testes manuais e a homologação por desenvolvedores e QA, disponibilizamos coleções interativas com documentação embutida nos próprios endpoints:
+
+- 🟧 **Postman Collection**: [`docs/wagering-api.postman_collection.json`](file:///p:/Git/GitHub/DistributedWageringProcessor/docs/wagering-api.postman_collection.json)
+- 🟣 **Insomnia Collection**: [`docs/wagering-api.insomnia_collection.json`](file:///p:/Git/GitHub/DistributedWageringProcessor/docs/wagering-api.insomnia_collection.json)
+
+Ambas as coleções possuem variáveis de ambiente pré-configuradas (`baseUrl`, `walletId`, `playerId`) e descrições explicativas em cada rota sem a necessidade de consultar arquivos externos.
+
+---
+
+## 2. Comandos de Automação (Makefile & Taskfile)
 
 Disponibilizamos comandos utilitários para acelerar o fluxo de desenvolvimento:
 
@@ -12,13 +23,14 @@ Disponibilizamos comandos utilitários para acelerar o fluxo de desenvolvimento:
 | `make test` | `task test` | Executa os testes unitários (`bun test tests/unit`). |
 | `make test-concurrency` | `task test:concurrency` | Executa os testes de concorrência real (50 requisições simultâneas). |
 | `make test-chaos` | `task test:chaos` | Executa o teste de resiliência e crash pós-commit (`chaos.test.ts`). |
+| `make smoke-test` | `task test:smoke` | Executa o teste rápido E2E de corrida de saldo e reconciliação. |
 | `make test-load` | `task test:load` | Executa o teste de carga e benchmarking com relatório estatístico. |
 | `make dlq-inspect` | `task dlq:inspect` | Inspeciona as mensagens atualmente retidas na Dead Letter Queue. |
 | `make dlq-replay` | `task dlq:replay` | Reprocessa e reenvia as mensagens da DLQ para a fila principal. |
 
 ---
 
-## 2. Dashboard Operacional (Grafana & Prometheus)
+## 3. Dashboard Operacional (Grafana & Prometheus)
 
 Ao subir os containers com `make up` ou `docker compose up --scale app=3`, acesse:
 
@@ -32,7 +44,7 @@ Ao subir os containers com `make up` ou `docker compose up --scale app=3`, acess
 
 ---
 
-## 3. Teste de Carga Automatizado (`bun run test:load`)
+## 4. Teste de Carga Automatizado (`bun run test:load`)
 
 O script [`scripts/load-test.ts`](file:///p:/Git/GitHub/DistributedWageringProcessor/scripts/load-test.ts) executa estresse de alta concorrência em tempo real contra a aplicação:
 
