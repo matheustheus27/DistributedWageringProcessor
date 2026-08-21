@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from "@nestjs/commo
 import { ConfigService } from "@nestjs/config";
 import { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } from "@aws-sdk/client-sqs";
 import { ProcessWagerUseCase } from "@modules/wagering/application/process-wager.use-case";
+import { CorrelationContext } from "@shared/infrastructure/observability/correlation-context";
 
 @Injectable()
 export class SqsConsumerService implements OnModuleInit, OnModuleDestroy {
@@ -70,52 +71,59 @@ export class SqsConsumerService implements OnModuleInit, OnModuleDestroy {
   private async handleMessage(msg: any): Promise<void> {
     const messageId = msg.MessageId;
     const receiptHandle = msg.ReceiptHandle;
+    const body = JSON.parse(msg.Body || "{}");
+    const data = body.data || body;
 
-    try {
-      const body = JSON.parse(msg.Body || "{}");
-      const data = body.data || body;
+    const correlationId = body.correlationId || data.idempotencyKey || `sqs-${messageId}`;
 
-      const result = await this.processWagerUseCase.execute({
+    await CorrelationContext.runWithContext(
+      {
+        correlationId,
         providerId: data.providerId,
-        externalTransactionId: data.externalTransactionId,
-        idempotencyKey: data.idempotencyKey,
-        playerId: data.playerId,
         walletId: data.walletId,
-        roundId: data.roundId,
-        gameId: data.gameId,
-        kind: data.kind,
-        money: data.money,
-        referenceExternalTransactionId: data.referenceExternalTransactionId,
-        messageId,
-        consumerName: "wager-sqs-consumer",
-      });
+      },
+      async () => {
+        try {
+          const result = await this.processWagerUseCase.execute({
+            providerId: data.providerId,
+            externalTransactionId: data.externalTransactionId,
+            idempotencyKey: data.idempotencyKey,
+            playerId: data.playerId,
+            walletId: data.walletId,
+            roundId: data.roundId,
+            gameId: data.gameId,
+            kind: data.kind,
+            money: data.money,
+            referenceExternalTransactionId: data.referenceExternalTransactionId,
+            messageId,
+            consumerName: "wager-sqs-consumer",
+          });
 
-      if (result.isSuccess) {
-        // Successful DB commit -> ACK SQS message
-        await this.ackMessage(receiptHandle);
-        this.logger.log({
-          msg: "SQS message processed and ACKed",
-          messageId,
-          transactionId: result.value.transactionId,
-          status: result.value.status,
-        });
-      } else {
-        this.logger.error({
-          msg: "Business failure processing SQS message, ACKed to prevent loop",
-          messageId,
-          error: result.error.message,
-        });
-        // ACK business failures (e.g. invalid payload) to avoid useless redelivery
-        await this.ackMessage(receiptHandle);
-      }
-    } catch (err: any) {
-      this.logger.error({
-        msg: "Transient error processing SQS message, message left for redelivery",
-        messageId,
-        error: err.message,
-      });
-      // Do NOT ACK on transient infrastructure crash
-    }
+          if (result.isSuccess) {
+            await this.ackMessage(receiptHandle);
+            this.logger.log({
+              msg: "SQS message processed and ACKed",
+              messageId,
+              transactionId: result.value.transactionId,
+              status: result.value.status,
+            });
+          } else {
+            this.logger.error({
+              msg: "Business failure processing SQS message, ACKed to prevent loop",
+              messageId,
+              error: result.error.message,
+            });
+            await this.ackMessage(receiptHandle);
+          }
+        } catch (err: any) {
+          this.logger.error({
+            msg: "Transient error processing SQS message, message left for redelivery",
+            messageId,
+            error: err.message,
+          });
+        }
+      },
+    );
   }
 
   private async ackMessage(receiptHandle: string): Promise<void> {

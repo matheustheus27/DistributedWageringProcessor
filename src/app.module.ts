@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { Module, NestModule, MiddlewareConsumer } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { MikroOrmModule } from "@mikro-orm/nestjs";
 import mikroOrmConfig from "../mikro-orm.config";
@@ -29,6 +29,8 @@ import { OutboxPollerWorker } from "@modules/messaging/infrastructure/outbox/out
 import { PendingReferenceWorker } from "@modules/wagering/infrastructure/workers/pending-reference.worker";
 import { MetricsService } from "@shared/infrastructure/observability/metrics.service";
 import { ProviderAuthGuard } from "@shared/infrastructure/guards/provider-auth.guard";
+import { AppLoggerService } from "@shared/infrastructure/observability/app-logger.service";
+import { CorrelationIdMiddleware } from "@shared/infrastructure/observability/correlation-id.middleware";
 
 import { WalletController } from "@modules/wallet/infrastructure/http/wallet.controller";
 import { WageringController } from "@modules/wagering/infrastructure/http/wagering.controller";
@@ -64,6 +66,11 @@ import { HealthController } from "@shared/infrastructure/observability/health.co
     PendingReferenceWorker,
     MetricsService,
     ProviderAuthGuard,
+    AppLoggerService,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(CorrelationIdMiddleware).forRoutes("*");
+  }
+}
