@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: wagering_postgres
+    environment:
+      POSTGRES_DB: wagering_db
+      POSTGRES_USER: wagering_user
+      POSTGRES_PASSWORD: wagering_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wagering_user -d wagering_db"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+
+  localstack:
+    image: localstack/localstack:latest
+    container_name: wagering_localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=sqs
+      - AWS_DEFAULT_REGION=us-east-1
+    volumes:
+      - "./scripts/init-localstack.sh:/etc/localstack/init/ready.d/init-localstack.sh"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=wagering_db
+      - DB_USER=wagering_user
+      - DB_PASSWORD=wagering_password
+      - AWS_REGION=us-east-1
+      - SQS_ENDPOINT=http://localstack:4566
+      - SQS_QUEUE_URL=http://localstack:4566/000000000000/wager-transactions.fifo
+      - SQS_DLQ_URL=http://localstack:4566/000000000000/wager-transactions-dlq.fifo
+    ports:
+      - "3000-3002:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
