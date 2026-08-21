@@ -95,6 +95,13 @@ DistributedWageringProcessor/
 ├── 📁 .github/                         # Workflows de Integração Contínua (CI/CD)
 │   └── 📁 workflows/
 │       └── ⚙️ ci.yml                    # Pipeline GitHub Actions (Build, Migrações, Testes)
+├── 📁 docs/                            # 📚 Documentação Técnica Detalhada por Módulos
+│   ├── 📄 00-visao-geral.md            # Contexto do negócio iGaming e invariantes globais
+│   ├── 📄 01-arquitetura.md            # Arquitetura Hexagonal, DDD e Diagramas C4
+│   ├── 📄 02-api-e-payloads.md         # Especificação completa da API, DTOs e FailureCodes
+│   ├── 📄 03-mensageria-e-sqs.md       # Payloads SQS FIFO, Inbox Pattern e DLQ CLI
+│   ├── 📄 04-concorrencia-e-locks.md   # Pessimistic Locking, Hash Canônico e Double-Entry
+│   └── 📄 05-guia-de-execucao.md       # Comandos de automação, Grafana e Testes de Carga
 ├── 📁 src/                             # Código-fonte da aplicação (Hexagonal Architecture)
 │   ├── 📁 core/                        # Núcleo compartilhado DDD (Domain primitives, Result, Errors)
 │   │   ├── 📁 application/             # Monad funcional Result<T, E>
@@ -148,8 +155,13 @@ DistributedWageringProcessor/
 
 ---
 
-## 📑 Quer se aprofundar na Arquitetura Técnica?
+## 📚 Documentação Técnica Detalhada (`docs/`)
 
-Para entender em detalhes o desenho das tabelas no PostgreSQL, os diagramas de estado C4, o funcionamento do **Transactional Outbox**, OpenTelemetry e os resultados dos benchmarks:
+Para explorar a documentação completa por tópicos:
 
-👉 **[Leia o ARCHITECTURE.md](/ARCHITECTURE.md)**
+- 📄 **[00 — Visão Geral do Sistema](docs/00-visao-geral.md)**: Contexto de iGaming, desafios de sistemas distribuídos e invariantes globais.
+- 📐 **[01 — Arquitetura do Sistema & Diagramas](docs/01-arquitetura.md)**: Camadas da Arquitetura Hexagonal, Diagrama C4 de Contêineres e Máquina de Estados.
+- 📡 **[02 — Especificação Completa da API & Payloads](docs/02-api-e-payloads.md)**: Todos os endpoints HTTP, exemplos de request/response e tabela de `FailureCode`.
+- 📬 **[03 — Mensageria, SQS FIFO & Outbox Pattern](docs/03-mensageria-e-sqs.md)**: Formato de mensagens SQS, Inbox deduplication, Outbox worker e comandos CLI da DLQ.
+- 🔒 **[04 — Concorrência, Locking & Double-Entry](docs/04-concorrencia-e-locks.md)**: Pessimistic locking (`SELECT FOR UPDATE`), hash canônico SHA-256 e partidas dobradas.
+- 🚀 **[05 — Guia de Execução & Testes](docs/05-guia-de-execucao.md)**: Automação via Taskfile/Makefile, Dashboard Grafana e relatório de testes de carga.
