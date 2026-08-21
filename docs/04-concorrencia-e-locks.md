@@ -24,7 +24,7 @@ Para identificar se requisições repetidas tratam-se do mesmo payload ou de um 
 2. **SHA-256 Hash**: É gerado um hash digest único (`payloadHash`) de 64 caracteres.
 3. **Comparações**:
    - **Chave e Hash Idênticos**: A API responde o DTO original gravado com `idempotentReplay: true`.
-   - **Chave Igual e Hash Divergente**: A API rejeita a requisição com HTTP `409 Conflict` (`IdempotencyConflictError`).
+   - **Chave Igual e Hash Difere**: A API rejeita a requisição com HTTP `409 Conflict` (`IdempotencyConflictError`).
 
 ---
 
@@ -32,17 +32,13 @@ Para identificar se requisições repetidas tratam-se do mesmo payload ou de um 
 
 Todas as movimentações financeiras são registradas segundo os princípios de partidas dobradas de contabilidade:
 
-```
-                  ┌──────────────────────────────────────────────┐
-                  │          OPERAÇÃO DE APOSTA (BET)            │
-                  └──────────────────────┬───────────────────────┘
-                                         │
-                 ┌───────────────────────┴───────────────────────┐
-                 │                                               │
-  ▼                                               ▼
-Débito (R$ 25.00)                               Crédito (R$ 25.00)
-Conta: PLAYER_LIABILITY                         Conta: HOUSE_PLATFORM
-(Reduz passivo do jogador)                      (Aumenta retenção da plataforma)
+```mermaid
+flowchart TD
+    Operation["🎲 OPERAÇÃO DE APOSTA (BET R$ 25.00)"] --> Debit["Débito: R$ 25.00\nConta: PLAYER_LIABILITY\n(Reduz passivo do jogador)"]
+    Operation --> Credit["Crédito: R$ 25.00\nConta: HOUSE_PLATFORM\n(Aumenta receita da plataforma)"]
+    
+    Debit --- Balanced{"Débitos == Créditos?\nisBalanced() === true"}
+    Credit --- Balanced
 ```
 
 - Cada transação gera um par balanceado onde a soma dos débitos é exatamente igual à soma dos créditos (`isBalanced() === true`).

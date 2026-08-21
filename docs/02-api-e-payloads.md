@@ -1,9 +1,25 @@
-# 02 — Especificação Completa da API & Payloads 📡
+# 02 — Especificação Completa da API, Payloads & Fluxos de Execução 📡
 
 ## 1. Endpoints de Carteira (`/wallets`)
 
 ### `POST /wallets` — Criar Carteira
 Cria uma nova carteira para o jogador. Se `initialBalance` for maior que zero, gera uma transação interna `OPENING` com lançamento de crédito no extrato.
+
+#### Fluxo de Execução Interno:
+
+```mermaid
+flowchart TD
+    A["POST /wallets"] --> B["WalletController: Validar DTO"]
+    B --> C["OpenWalletUseCase.execute()"]
+    C --> D{"Já existe carteira para (playerId, currency)?"}
+    D -- Sim --> E["HTTP 409 Conflict"]
+    D -- Não --> F["Wallet.open(): Instanciar Aggregate Root"]
+    F --> G{"initialBalance > 0?"}
+    G -- Sim --> H["Criar WalletLedgerEntry (OPENING / PLAYER_LIABILITY)"]
+    G -- Não --> I["Persistir Wallet no PostgreSQL via Unit of Work"]
+    H --> I
+    I --> J["HTTP 201 Created"]
+```
 
 #### Request Body:
 ```json
@@ -62,10 +78,6 @@ Retorna o estado atual da carteira e seu saldo acumulado.
 ### `GET /wallets/:walletId/ledger` — Consultar Extrato Paginado
 Retorna os lançamentos contábeis imutáveis da carteira com paginação baseada em cursor opaco.
 
-#### Query Parameters:
-- `limit` (opcional, padrão `50`): Quantidade máxima de registros.
-- `cursor` (opcional): Cursor ISO da última data de lançamento.
-
 #### Response Success (`200 OK`):
 ```json
 {
@@ -108,6 +120,41 @@ Compara o saldo gravado na tabela `wallets` com o resultado do cálculo do extra
 ## 2. Endpoints de Transação de Apostas (`/wagering/transactions`)
 
 ### `POST /wagering/transactions` — Submeter Transação
+
+#### Fluxo de Execução Interno (Transacional Atômico SQL):
+
+```mermaid
+flowchart TD
+    Req["POST /wagering/transactions"] --> Mid["CorrelationId Middleware"]
+    Mid --> UseCase["ProcessWagerUseCase.execute()"]
+    UseCase --> Transaction["em.transactional(): Iniciar Transação SQL"]
+    
+    subgraph SQL[" 🔒 Transação Atômica PostgreSQL "]
+        Transaction --> Lock["1. SET LOCAL lock_timeout = '2000ms'\nSELECT FOR UPDATE"]
+        Lock --> Inbox["2. Inserir InboxMessage (deduplicação)"]
+        Inbox --> HashCheck{"3. Validar Idempotência"}
+        
+        HashCheck -->|Chave e Hash Idênticos| Replay["Retornar Resposta Salva\nidempotentReplay: true"]
+        HashCheck -->|Chave Igual, Hash Diferente| Conflict["HTTP 409 Conflict"]
+        HashCheck -->|Nova Transação| KindCheck{"4. Tipo de Transação?"}
+        
+        KindCheck -->|REFUND ou ROLLBACK| RefCheck{"Referência Existe?"}
+        RefCheck -->|Não| PendingRef["Gravar Status: PENDING_REFERENCE"]
+        RefCheck -->|Sim| BalanceCheck{"5. Saldo Suficiente?"}
+        
+        KindCheck -->|BET, WIN ou LOSS| BalanceCheck
+        
+        BalanceCheck -->|Não| Reject["Gravar Status: REJECTED\nINSUFFICIENT_FUNDS"]
+        BalanceCheck -->|Sim| Process["Atualizar Saldo da Wallet\nGravar Status: PROCESSED\nInserir LedgerEntry & Outbox"]
+
+        Replay --> Commit["COMMIT SQL"]
+        Reject --> Commit
+        Process --> Commit
+        PendingRef --> Commit
+    end
+
+    Commit --> OutboxWorker["OutboxPollerWorker: SELECT SKIP LOCKED -> Publicar SQS FIFO"]
+```
 
 #### Headers Obligatórios:
 - `Idempotency-Key`: Identificador de idempotência do provedor (ex.: `"provider-a:tx-123"`).
@@ -166,7 +213,21 @@ Compara o saldo gravado na tabela `wallets` com o resultado do cálculo do extra
 
 ---
 
-## 3. Tabela de Códigos de Falha (`FailureCode`)
+## 3. Roteiro Passo a Passo de Testes de Desenvolvimento 🧪
+
+```mermaid
+flowchart LR
+    Step1["1. Criar Carteira\nPOST /wallets (R$ 1000.00)"] --> Step2["2. Submeter Aposta Válida\nPOST /wagering/transactions (BET R$ 25)"]
+    Step2 --> Step3["3. Replay Idempotente\nReenviar BET -> idempotentReplay: true"]
+    Step3 --> Step4["4. Conflito de Idempotência\nReenviar chave com valor R$ 50 -> HTTP 409"]
+    Step4 --> Step5["5. Submeter Ganho\nPOST /wagering/transactions (WIN R$ 50)"]
+    Step5 --> Step6["6. Submeter Estorno\nPOST /wagering/transactions (REFUND R$ 25)"]
+    Step6 --> Step7["7. Reconciliar Saldo\nPOST /wallets/:id/reconciliation -> consistent: true"]
+```
+
+---
+
+## 4. Tabela de Códigos de Falha (`FailureCode`)
 
 | Código | Descrição |
 |---|---|

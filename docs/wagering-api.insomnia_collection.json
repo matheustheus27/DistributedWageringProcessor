@@ -1,14 +1,14 @@
 {
   "_type": "export",
   "__export_format": 4,
-  "__export_date": "2026-08-21T17:00:00.000Z",
+  "__export_date": "2026-08-21T17:30:00.000Z",
   "__export_source": "insomnia.desktop.app:v9.2.0",
   "resources": [
     {
       "_id": "wrk_wagering_processor",
       "_type": "workspace",
       "name": "Distributed Wagering Processor API (Jungle Gaming)",
-      "description": "Documentação e coleção interativa de APIs do Processador Financeiro de Apostas.",
+      "description": "Documentação e coleção interativa de APIs do Processador Financeiro de Apostas com encadeamento automático de variáveis.",
       "scope": "design"
     },
     {
@@ -27,7 +27,7 @@
       "_type": "request",
       "parentId": "wrk_wagering_processor",
       "name": "1. Criar Carteira (Create Wallet)",
-      "description": "Cria uma nova carteira para o jogador com saldo inicial de R$ 1000.00 BRL.\n\n### Resposta Esperada (201 Created):\n{\n  \"id\": \"...\",\n  \"playerId\": \"player-insomnia-888\",\n  \"balance\": { \"amount\": \"1000.00\", \"currency\": \"BRL\" },\n  \"version\": 1\n}",
+      "description": "Cria uma nova carteira para o jogador. O ID da carteira retornada pode ser usado como referência nas requisições seguintes.\n\n### Resposta Esperada (201 Created):\n{\n  \"id\": \"0192f291-27dd-7d3f-8071-5f8685deef37\",\n  \"playerId\": \"player-insomnia-888\",\n  \"balance\": { \"amount\": \"1000.00\", \"currency\": \"BRL\" },\n  \"version\": 1\n}",
       "method": "POST",
       "url": "{{ _.baseUrl }}/wallets",
       "headers": [
@@ -43,9 +43,9 @@
       "_type": "request",
       "parentId": "wrk_wagering_processor",
       "name": "2. Consultar Saldo da Carteira (Get Wallet)",
-      "description": "Retorna o estado atual da carteira e seu saldo acumulado.",
+      "description": "Retorna o estado atual da carteira criada na requisição 1.",
       "method": "GET",
-      "url": "{{ _.baseUrl }}/wallets/{{ _.walletId }}",
+      "url": "{{ _.baseUrl }}/wallets/{% response 'body', 'req_1_create_wallet', '$.id', 'never', 60 %}",
       "headers": []
     },
     {
@@ -53,7 +53,7 @@
       "_type": "request",
       "parentId": "wrk_wagering_processor",
       "name": "3. Submeter Aposta (Submit BET)",
-      "description": "Debita R$ 25.00 BRL da carteira do jogador com trava pessimista de linha no PostgreSQL (`SELECT FOR UPDATE`).\n\n### Resposta Esperada (200 OK):\n{\n  \"transactionId\": \"...\",\n  \"status\": \"PROCESSED\",\n  \"balance\": { \"amount\": \"975.00\", \"currency\": \"BRL\" },\n  \"idempotentReplay\": false\n}",
+      "description": "Debita R$ 25.00 BRL da carteira criada usando encadeamento automático de resposta do Insomnia.\n\n### Resposta Esperada (200 OK):\n{\n  \"transactionId\": \"...\",\n  \"status\": \"PROCESSED\",\n  \"balance\": { \"amount\": \"975.00\", \"currency\": \"BRL\" },\n  \"idempotentReplay\": false\n}",
       "method": "POST",
       "url": "{{ _.baseUrl }}/wagering/transactions",
       "headers": [
@@ -62,7 +62,7 @@
       ],
       "body": {
         "mimeType": "application/json",
-        "text": "{\n  \"providerId\": \"insomnia\",\n  \"externalTransactionId\": \"bet-2001\",\n  \"playerId\": \"{{ _.playerId }}\",\n  \"walletId\": \"{{ _.walletId }}\",\n  \"roundId\": \"round-101\",\n  \"gameId\": \"fortune-ox\",\n  \"kind\": \"BET\",\n  \"money\": { \"amount\": \"25.00\", \"currency\": \"BRL\" }\n}"
+        "text": "{\n  \"providerId\": \"insomnia\",\n  \"externalTransactionId\": \"bet-2001\",\n  \"playerId\": \"{{ _.playerId }}\",\n  \"walletId\": \"{% response 'body', 'req_1_create_wallet', '$.id', 'never', 60 %}\",\n  \"roundId\": \"round-101\",\n  \"gameId\": \"fortune-ox\",\n  \"kind\": \"BET\",\n  \"money\": { \"amount\": \"25.00\", \"currency\": \"BRL\" }\n}"
       }
     },
     {
@@ -79,7 +79,7 @@
       ],
       "body": {
         "mimeType": "application/json",
-        "text": "{\n  \"providerId\": \"insomnia\",\n  \"externalTransactionId\": \"bet-2001\",\n  \"playerId\": \"{{ _.playerId }}\",\n  \"walletId\": \"{{ _.walletId }}\",\n  \"roundId\": \"round-101\",\n  \"gameId\": \"fortune-ox\",\n  \"kind\": \"BET\",\n  \"money\": { \"amount\": \"25.00\", \"currency\": \"BRL\" }\n}"
+        "text": "{\n  \"providerId\": \"insomnia\",\n  \"externalTransactionId\": \"bet-2001\",\n  \"playerId\": \"{{ _.playerId }}\",\n  \"walletId\": \"{% response 'body', 'req_1_create_wallet', '$.id', 'never', 60 %}\",\n  \"roundId\": \"round-101\",\n  \"gameId\": \"fortune-ox\",\n  \"kind\": \"BET\",\n  \"money\": { \"amount\": \"25.00\", \"currency\": \"BRL\" }\n}"
       }
     },
     {
@@ -96,34 +96,51 @@
       ],
       "body": {
         "mimeType": "application/json",
-        "text": "{\n  \"providerId\": \"insomnia\",\n  \"externalTransactionId\": \"win-2002\",\n  \"playerId\": \"{{ _.playerId }}\",\n  \"walletId\": \"{{ _.walletId }}\",\n  \"roundId\": \"round-101\",\n  \"gameId\": \"fortune-ox\",\n  \"kind\": \"WIN\",\n  \"money\": { \"amount\": \"50.00\", \"currency\": \"BRL\" }\n}"
+        "text": "{\n  \"providerId\": \"insomnia\",\n  \"externalTransactionId\": \"win-2002\",\n  \"playerId\": \"{{ _.playerId }}\",\n  \"walletId\": \"{% response 'body', 'req_1_create_wallet', '$.id', 'never', 60 %}\",\n  \"roundId\": \"round-101\",\n  \"gameId\": \"fortune-ox\",\n  \"kind\": \"WIN\",\n  \"money\": { \"amount\": \"50.00\", \"currency\": \"BRL\" }\n}"
       }
     },
     {
-      "_id": "req_6_get_ledger",
+      "_id": "req_6_submit_refund",
       "_type": "request",
       "parentId": "wrk_wagering_processor",
-      "name": "6. Consultar Extrato (Get Ledger)",
+      "name": "6. Submeter Estorno (Submit REFUND)",
+      "description": "Estorna a aposta `bet-2001` criada anteriormente.",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/wagering/transactions",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Idempotency-Key", "value": "insomnia:refund-2003" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"providerId\": \"insomnia\",\n  \"externalTransactionId\": \"refund-2003\",\n  \"referenceExternalTransactionId\": \"bet-2001\",\n  \"playerId\": \"{{ _.playerId }}\",\n  \"walletId\": \"{% response 'body', 'req_1_create_wallet', '$.id', 'never', 60 %}\",\n  \"roundId\": \"round-101\",\n  \"gameId\": \"fortune-ox\",\n  \"kind\": \"REFUND\",\n  \"money\": { \"amount\": \"25.00\", \"currency\": \"BRL\" }\n}"
+      }
+    },
+    {
+      "_id": "req_7_get_ledger",
+      "_type": "request",
+      "parentId": "wrk_wagering_processor",
+      "name": "7. Consultar Extrato (Get Ledger)",
       "description": "Retorna o extrato imutável com lançamentos de débito/crédito e contas contábeis.",
       "method": "GET",
-      "url": "{{ _.baseUrl }}/wallets/{{ _.walletId }}/ledger?limit=50",
+      "url": "{{ _.baseUrl }}/wallets/{% response 'body', 'req_1_create_wallet', '$.id', 'never', 60 %}/ledger?limit=50",
       "headers": []
     },
     {
-      "_id": "req_7_reconcile_balance",
+      "_id": "req_8_reconcile_balance",
       "_type": "request",
       "parentId": "wrk_wagering_processor",
-      "name": "7. Reconciliar Saldo (Reconcile Balance)",
+      "name": "8. Reconciliar Saldo (Reconcile Balance)",
       "description": "Executa a auditoria financeira comparando o saldo atual com a soma do extrato.",
       "method": "POST",
-      "url": "{{ _.baseUrl }}/wallets/{{ _.walletId }}/reconciliation",
+      "url": "{{ _.baseUrl }}/wallets/{% response 'body', 'req_1_create_wallet', '$.id', 'never', 60 %}/reconciliation",
       "headers": []
     },
     {
-      "_id": "req_8_health_ready",
+      "_id": "req_9_health_ready",
       "_type": "request",
       "parentId": "wrk_wagering_processor",
-      "name": "8. Health Check Readiness",
+      "name": "9. Health Check Readiness",
       "description": "Probe de saúde para verificar prontidão do container NestJS e conexão PostgreSQL.",
       "method": "GET",
       "url": "{{ _.baseUrl }}/health/ready",

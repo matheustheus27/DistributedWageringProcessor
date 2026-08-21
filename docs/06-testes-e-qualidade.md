@@ -6,23 +6,13 @@ O projeto possui uma **suíte multinível de testes automatizados**, cobrindo de
 
 ## 🗺️ Mapa de Cobertura de Testes
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 1. TESTES UNITÁRIOS (bun run test)                                          │
-│    -> Money, Wallet Aggregate Root, WagerTransaction States, FailureCodes    │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ 2. TESTES DE CONCORRÊNCIA REAL (bun run test:concurrency)                   │
-│    -> Disputa de 50 apostas simultâneas de R$ 80 em saldo de R$ 100          │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ 3. TESTES DE CHAOS ENGINEERING & RESILIÊNCIA (bun run test:chaos)           │
-│    -> Kill do processo (SIGKILL) pós-commit SQL pré-ACK no SQS              │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ 4. TESTE RÁPIDO E2E SMOKE TEST (bun run test:smoke)                         │
-│    -> Teste HTTP E2E integrado com reconciliação em tempo real               │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ 5. BENCHMARKING & TESTE DE CARGA (bun run test:load)                        │
-│    -> Estresse massivo simulando Hot Wallets e relatórios p50/p95/p99       │
-└─────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Suite["🧪 SUÍTE DE TESTES E QUALIDADE"] --> Unit["1. TESTES UNITÁRIOS\n(bun run test)\nMoney, Wallet, WagerTransaction, FailureCodes"]
+    Suite --> Concurrency["2. TESTES DE CONCORRÊNCIA REAL\n(bun run test:concurrency)\n50 apostas simultâneas de R$ 80 em saldo R$ 100"]
+    Suite --> Chaos["3. TESTES DE CHAOS ENGINEERING & RESILIÊNCIA\n(bun run test:chaos)\nKill de processo (SIGKILL) pós-commit SQL pré-ACK SQS"]
+    Suite --> Smoke["4. TESTE RÁPIDO E2E SMOKE TEST\n(bun run test:smoke)\nFluxo E2E HTTP + Reconciliação em tempo real"]
+    Suite --> Load["5. BENCHMARKING & TESTE DE CARGA\n(bun run test:load)\nEstresse massivo em Hot Wallets com relatórios p50/p95/p99"]
 ```
 
 ---

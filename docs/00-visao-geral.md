@@ -4,11 +4,10 @@
 
 A **Jungle Gaming** é uma software house especializada em plataformas de cassino online. No ecossistema de iGaming, múltiplos **Provedores de Jogos** (ex.: PG Soft, Pragmatic Play, Evolution) enviam requisições em tempo real para a plataforma de carteira (*Wallet API*) a cada giro de slot, mão de cartas ou aposta efetuada pelo jogador.
 
-```
-┌──────────────────┐           ┌──────────────────────────────────┐           ┌──────────────────┐
-│  Provedor de     │  HTTP/SQS │  Distributed Wagering Processor  │  SQL Lock │  PostgreSQL      │
-│  Jogos (Slot)    │ ────────> │  (Plataforma Jungle Gaming)      │ ────────> │  (Wallet/Ledger) │
-└──────────────────┘           └──────────────────────────────────┘           └──────────────────┘
+```mermaid
+flowchart LR
+    Provider["🎮 Provedor de Jogos (Slot Engine)"] -->|HTTP REST / SQS FIFO| API["🚀 Distributed Wagering Processor"]
+    API -->|SELECT FOR UPDATE / Unit of Work| DB[("PostgreSQL 16\n(Wallet/Ledger/Inbox/Outbox)")]
 ```
 
 ---
@@ -23,7 +22,76 @@ Em um ambiente de alta concorrência com milhares de apostadores simultâneos:
 
 ---
 
-## 3. As Invariantes Globais Invioláveis
+## 3. Modelo do Banco de Dados PostgreSQL (`erDiagram`)
+
+O diagrama relacional abaixo ilustra a estrutura das 5 tabelas no PostgreSQL com suas chaves primárias e relacionamentos:
+
+```mermaid
+erDiagram
+    wallets {
+        uuid id PK
+        string player_id UK
+        string currency UK
+        numeric balance "NUMERIC(18,2) CHECK >= 0"
+        int version "DEFAULT 1"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    wallet_ledger_entries {
+        uuid id PK
+        uuid wallet_id FK
+        uuid transaction_id FK
+        string direction "DEBIT / CREDIT"
+        string account_type "PLAYER_LIABILITY / HOUSE_PLATFORM / PROVIDER_SETTLEMENT"
+        numeric amount "NUMERIC(18,2)"
+        string currency
+        numeric balance_before "NUMERIC(18,2)"
+        numeric balance_after "NUMERIC(18,2) CHECK >= 0"
+        timestamp created_at
+    }
+
+    wager_transactions {
+        uuid id PK
+        string provider_id UK
+        string external_transaction_id UK
+        string idempotency_key UK
+        string player_id
+        uuid wallet_id FK
+        string round_id
+        string game_id
+        string kind "BET / WIN / LOSS / REFUND / ROLLBACK"
+        string status "PENDING / PROCESSED / REJECTED / PENDING_REFERENCE"
+        numeric amount "NUMERIC(18,2)"
+        string currency
+        string payload_hash "SHA-256 Digest"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    inbox_messages {
+        string consumer_name PK
+        string message_id PK
+        timestamp processed_at
+    }
+
+    outbox_messages {
+        uuid id PK
+        string event_type
+        jsonb payload
+        timestamp occurred_at
+        timestamp published_at "INDEX idx_outbox_pending"
+        int attempts "DEFAULT 0"
+    }
+
+    wallets ||--o{ wallet_ledger_entries : "possui extratos"
+    wallets ||--o{ wager_transactions : "possui transações"
+    wager_transactions ||--o{ wallet_ledger_entries : "gera lançamentos"
+```
+
+---
+
+## 4. As Invariantes Globais Invioláveis
 
 Para resolver esses desafios, a solução implementa 4 invariantes globais aplicadas e garantidas diretamente no schema do banco de dados:
 
