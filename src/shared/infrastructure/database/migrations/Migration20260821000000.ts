@@ -47,6 +47,7 @@ export class Migration20260821000000 extends Migration {
         wallet_id UUID NOT NULL REFERENCES wallets(id),
         transaction_id UUID NOT NULL REFERENCES wager_transactions(id),
         direction VARCHAR(10) NOT NULL,
+        account_type VARCHAR(50) NOT NULL DEFAULT 'PLAYER_LIABILITY',
         amount NUMERIC(18, 2) NOT NULL,
         currency VARCHAR(3) NOT NULL,
         balance_before NUMERIC(18, 2) NOT NULL,

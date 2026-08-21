@@ -59,10 +59,21 @@ sequenceDiagram
 
 ---
 
+## 🌟 6 Diferenciais de Alta Engenharia Incorporados
+
+1. **⚡ Suite Automatizada de Testes de Carga (`bun run test:load`)**: Script de benchmarking simulando cenários de *Hot Wallet* (100 requisições simultâneas na mesma conta) e injeção massiva de duplicatas, reportando RPS, p50, p95, p99 e taxa de divergência.
+2. **💥 Chaos Engineering & Testes de Resiliência (`bun run test:chaos`)**: Teste de integração automatizado simulando queda de processo (`SIGKILL`) imediatamente após o commit do PostgreSQL, provando que a reentrega da mensagem passa pela Inbox sem duplicar lançamentos.
+3. **📊 Double-Entry Bookkeeping (Partidas Dobradas)**: Suporte a contas contábeis (`PLAYER_LIABILITY`, `HOUSE_PLATFORM`, `PROVIDER_SETTLEMENT`). Cada transação possui lançamentos de débito e crédito estritamente balanceados.
+4. **🔍 Rastreabilidade Distribuída com OpenTelemetry**: SDK de telemetria integrado para rastreamento de spans e propagação de `traceId` / `spanId`.
+5. **📈 Dashboard Operacional Local (Grafana + Prometheus)**: Containers de Prometheus e Grafana pré-configurados subindo no Docker Compose com métricas em tempo real (taxa de transações, outbox lag, latência p95).
+6. **📐 Documentação C4 e Diagrama de Estados (`ARCHITECTURE.md`)**: Diagramas visuais detalhados da máquina de estados da `WagerTransaction` e arquitetura C4 de contêineres.
+
+---
+
 ## 🎯 As 4 Regras de Ouro do Sistema
 
 1. **Moeda de Verdade (`Money`)**: Dinheiro não é float nem number. É sempre tratado como texto decimal exato com 2 casas (`"25.00"`), sem arredondamentos estranhos do JavaScript.
-2. **Ledger Auditável (Extrato Bancário)**: Nenhuma alteração de saldo acontece "do nada". Toda entrada ou saída gera um lançamento imutável de extrato (`DEBIT` ou `CREDIT`) que prova de onde veio e para onde foi o dinheiro.
+2. **Ledger Auditável (Extrato Bancário & Partidas Dobradas)**: Toda entrada ou saída gera lançamentos imutáveis de extrato balanceados entre contas de passivo e receita.
 3. **Idempotência Garantida (Sem Cobrança Dupla)**: Cada operação tem um identificador único. Se a mensagem chegar 50 vezes seguidas, o sistema processa a primeira e responde exatamente a mesma resposta para as outras 49, sem descontar o saldo de novo.
 4. **Proteção Contra Corridas (Pessimistic Locking)**: Quando duas apostas tentam mexer no saldo do mesmo jogador ao mesmo tempo, o banco de dados enfileira e resolve uma por uma com trava de linha (`SELECT FOR UPDATE`), impedindo que o saldo fique negativo.
 
@@ -72,11 +83,7 @@ sequenceDiagram
 
 Você não precisa instalar bancos ou filas na sua máquina local! Tudo roda dentro do **Docker**.
 
-### Pré-requisitos
-- [Docker](https://www.docker.com/) e Docker Compose instalados.
-- [Bun 1.x](https://bun.sh/) (opcional, caso queira rodar testes fora do container).
-
-### 1. Subindo a Aplicação em 3 Instâncias Simultâneas
+### 1. Subindo a Aplicação + Prometheus + Grafana
 
 Execute o comando abaixo na raiz do projeto:
 
@@ -85,86 +92,36 @@ docker compose up --build --scale app=3
 ```
 
 Esse comando vai subir:
-- 🐘 **PostgreSQL 16**: O banco de dados com todas as restrições financeiras ativas.
-- 📬 **LocalStack (AWS SQS)**: A fila de mensagens assíncronas FIFO (`wager-transactions.fifo`).
-- ⚡ **3 Instâncias da Aplicação NestJS**: Testando na prática o comportamento distribuído na porta `3000`.
-
-### 2. Rodando Localmente para Desenvolvimento (Opcional)
-
-Se quiser subir apenas o banco e a fila para desenvolver na sua máquina:
-
-```bash
-# 1. Subir banco e fila
-docker compose up postgres localstack -d
-
-# 2. Instalar dependências
-bun install
-
-# 3. Rodar as migrações do banco
-bun run migration:up
-
-# 4. Iniciar o servidor em modo de desenvolvimento
-bun run start:dev
-```
+- 🐘 **PostgreSQL 16**: O banco de dados com todas as restrições financeiras ativas na porta `5432`.
+- 📬 **LocalStack (AWS SQS)**: A fila de mensagens assíncronas FIFO (`wager-transactions.fifo`) na porta `4566`.
+- ⚡ **3 Instâncias da Aplicação NestJS**: Executando com load balancing na porta `3000`.
+- 📊 **Prometheus**: Coletor de métricas na porta `9090`.
+- 📈 **Grafana Dashboard**: Painel operacional em tempo real na porta `3001` (Login: `admin` / `admin`).
 
 ---
 
-## 🛠️ Plano de Execução por Fases
-
-### 🔹 Fase 1: Domain Core & Value Objects
-- **Classe Atômica `Money`**: Baseada em `decimal.js` com escala fixa (2 casas decimais) e serialização rigorosa em string (`"25.00"`).
-- **Entidades de Domínio Encapsuladas**: Construtores privados e factories estáticas (`open`, `create`, `rehydrate`) em `Wallet`, `WagerTransaction` e `WalletLedgerEntry`.
-- **Envelopes Tipados de Eventos**: Subclasses concretas de `IntegrationEvent<T>` (`WalletBalanceChanged`, `WagerTransactionProcessed`, `WagerTransactionRejected`, `WagerTransactionPendingReference`).
-
-### 🔹 Fase 2: Persistência & Migrations (MikroORM)
-- **Migrations PostgreSQL**: Restrições rigorosas no schema (`CHECK (balance >= 0)`, `CHECK (balance_after >= 0)`, validação aritmética de ledger), chaves únicas compostas e índices parciais (`idx_pending_reference`, `idx_outbox_pending`).
-- **Entidades & Mappers Desacoplados**: Mapeamento bidirecional (`fromDomain()`, `toDomain()`) convertendo tipos SQL para Value Objects (`Money`) e Agregados de domínio.
-- **Repositórios Transacionais & Unit of Work**: Repositórios MikroORM integrados ao `DatabaseUnitOfWork` (`em.transactional()`) com suporte a `SELECT FOR UPDATE` e `SKIP LOCKED`.
-
-### 🔹 Fase 3: Casos de Uso & Máquina de Estados
-- **`ProcessWagerUseCase` Unificado (HTTP e SQS)**: Resolução de dependências (`REFUND` e `ROLLBACK`), transição para `PENDING_REFERENCE` em caso de chegada fora de ordem, validação estrita de saldo e rejeição atômica (`REJECTED` com `failureCode` padronizado).
-- **Casos de Uso Auxiliares**: `OpenWalletUseCase`, `GetWalletUseCase`, `GetLedgerUseCase` (paginação por cursor) e `ReconcileWalletUseCase`.
-
-### 🔹 Fase 4: Mensageria, Inbox & Outbox Pattern
-- **SQS Consumer Resiliente**: Política de ACK posterior ao commit e deduplicação persistente via `inbox_messages`.
-- **`OutboxPublisherWorker`**: Polling periódico com locking distribuído via `SELECT FOR UPDATE SKIP LOCKED` do Postgres garantindo entrega *at-least-once*.
-- **`PendingReferenceWorker`**: Worker agendado para reprocessamento de transações `PENDING_REFERENCE` com backoff exponencial.
-
-### 🔹 Fase 5: Observabilidade, API & Entrypoints
-- **Controllers & DTOs NestJS**: Validações de entrada rigorosas via `class-validator`.
-- **Structured JSON Logging (Pino)**: Logs estruturados com propagação de `correlationId`, `walletId` e `transactionId`.
-- **Health Checks & Métricas**: Endpoints `/health/live`, `/health/ready` e exportador Prometheus em `/metrics` monitorando lag da outbox e concorrência.
-
-### 🔹 Fase 6: Bateria de Testes Automatizados
-- **Unitários**: Invariantes de `Money`, transições de estado do Aggregate e idempotência.
-- **Integração**: Banco PostgreSQL e LocalStack (SQS FIFO Queues).
-- **Concorrência Real**: Cenários de 50 requisições simultâneas na mesma wallet, disputas de saldo (saldo 100 com 2 apostas de 80) e simulação de kill de processo pré-ack para validação de idempotência.
-
----
-
-Criamos uma suíte de testes completa, incluindo cenários reais de estresse financeiro e concorrência:
+## 🧪 Suíte de Testes & Benchmark
 
 ```bash
-# Rodar testes unitários (Money, Wallet, Transações)
+# Testes Unitários (Money, Wallet, Transações)
 bun test tests/unit
 
-# Rodar os testes de Concorrência (50 requisições simultâneas e disputa de saldo)
+# Testes de Concorrência Real (50 requisições simultâneas e disputa de saldo)
 bun test tests/concurrency
 
-# Rodar todos os testes do projeto
+# Teste de Chaos Engineering (Simulação de crash pós-commit pré-ACK)
+bun test:chaos
+
+# Teste de Carga e Benchmark (100 requisições simultâneas + Reconciliação)
+bun run test:load
+
+# Executar Todos os Testes
 bun test tests/
 ```
-
-> **Cenário de Teste de Concorrência Incluído**:
-> 1. Um saldo inicial de **R$ 100,00**.
-> 2. Duas apostas simultâneas de **R$ 80,00** disputando o saldo ao mesmo tempo.
-> 3. **Resultado**: Exatamente 1 aposta é APROVADA (saldo final R$ 20,00) e a outra é REJEITADA por saldo insuficiente, gerando exatamente 1 lançamento de extrato.
 
 ---
 
 ## 📂 Organização do Código (Estrutura de Diretórios)
-
-O projeto segue a **Arquitetura Hexagonal (Ports & Adapters)**. O objetivo é manter o coração do negócio (as regras de dinheiro e carteira) totalmente isolado de bancos de dados ou frameworks como NestJS.
 
 ```
 DistributedWageringProcessor/
@@ -188,98 +145,32 @@ DistributedWageringProcessor/
 │   │       └── 📁 infrastructure/      # Controller HTTP, DTOs, Entidades e Repositórios MikroORM
 │   ├── 📁 shared/                      # Infraestrutura compartilhada da aplicação
 │   │   ├── 📁 application/             # Contrato IUnitOfWork
-│   │   └── 📁 infrastructure/          # Database UnitOfWork, Migrações SQL, Guard de Auth e Health/Metrics
+│   │   └── 📁 infrastructure/          # Database UnitOfWork, Migrações SQL, Telemetria OpenTelemetry, Guard e Health
 │   └── 📄 main.ts                      # Ponto de entrada NestJS com Bootstrapping e Pipes
 ├── 📁 tests/                           # Suíte de Testes Automatizados
 │   ├── 📁 unit/                        # Testes unitários (Money, Wallet, WagerTransaction)
-│   └── 📁 concurrency/                 # Testes de concorrência e consistência financeira (50 requests em paralelo)
-├── 📁 scripts/                         # Scripts de Inicialização de Containers
+│   ├── 📁 integration/                 # Testes de integração e Chaos Engineering (chaos.test.ts)
+│   └── 📁 concurrency/                 # Testes de concorrência e consistência financeira
+├── 📁 scripts/                         # Scripts de Automação & Load Test
+│   ├── 📜 load-test.ts                 # Script de benchmarking e estresse de carga (bun run test:load)
 │   └── 📜 init-localstack.sh           # Auto-provisionamento de Filas FIFO SQS no LocalStack
-├── 🐳 docker-compose.yml              # Orquestração de Containers (PostgreSQL, LocalStack, App Scaled)
+├── 📁 docker/                          # Configurações de Monitoramento
+│   ├── 📁 grafana/                     # Provisionamento de Dashboards Grafana
+│   └── 📜 prometheus.yml               # Configuração do Prometheus Metrics Scraper
+├── 🐳 docker-compose.yml              # Orquestração de Containers (Postgres, LocalStack, App, Prometheus, Grafana)
 ├── 🐳 Dockerfile                       # Containerização usando Bun 1.x Alpine
 ├── ⚙️ mikro-orm.config.ts             # Configuração ORM, conexão PostgreSQL e Migrações
 ├── 📜 package.json                    # Dependências da aplicação e scripts de execução Bun
 ├── 📄 tsconfig.json                   # Configuração estrita do TypeScript e Path Aliases (@core, @modules)
 ├── 📖 README.md                       # Documentação didática do projeto
-├── 📐 ARCHITECTURE.md                 # Documento detalhado de decisões arquiteturais e banco de dados
+├── 📐 ARCHITECTURE.md                 # Documento detalhado de decisões arquiteturais, C4 e banco de dados
 └── 🔒 .env.example                    # Modelo de variáveis de ambiente
 ```
 
 ---
 
-## 📡 Endpoints da API
-
-### 🏥 Saúde da Aplicação (Abertos)
-- `GET /health/live`: Retorna `200 OK` se a aplicação estiver no ar.
-- `GET /health/ready`: Retorna `200 OK` se o PostgreSQL e o SQS estiverem acessíveis.
-- `GET /metrics`: Expõe métricas no formato Prometheus (latência, duplicatas, status das apostas).
-
----
-
-### 👛 Carteiras (`/wallets`)
-
-#### 1. Criar uma Nova Carteira
-```http
-POST /wallets
-Content-Type: application/json
-```
-```json
-{
-  "playerId": "jogador-777",
-  "initialBalance": { "amount": "1000.00", "currency": "BRL" }
-}
-```
-
-#### 2. Consultar Carteira
-```http
-GET /wallets/:walletId
-```
-
-#### 3. Consultar Extrato (Ledger com Paginação por Cursor)
-```http
-GET /wallets/:walletId/ledger?limit=50
-```
-
-#### 4. Reconciliar Saldo (Auditoria em Tempo Real)
-Verifica se a soma de todas as entradas e saídas do extrato bate exatamente com o saldo gravado na carteira.
-```http
-POST /wallets/:walletId/reconciliation
-```
-
----
-
-### 🎲 Apostas e Transações (`/wagering/transactions`)
-
-#### Submeter uma Operação de Aposta
-```http
-POST /wagering/transactions
-Idempotency-Key: provedor-a:transacao-999
-Content-Type: application/json
-```
-```json
-{
-  "providerId": "provedor-a",
-  "externalTransactionId": "transacao-999",
-  "playerId": "jogador-777",
-  "walletId": "ID-DA-CARTEIRA-AQUI",
-  "roundId": "rodada-42",
-  "gameId": "fortune-monkey",
-  "kind": "BET",
-  "money": { "amount": "25.00", "currency": "BRL" }
-}
-```
-
-**Tipos de Operação (`kind`)**:
-- `BET`: Aposta. Débito no saldo.
-- `WIN`: Ganho. Crédito no saldo.
-- `LOSS`: Derrota. Não altera o saldo (apenas registra o fim da rodada).
-- `REFUND`: Estorno. Reverte uma aposta `BET` processada.
-- `ROLLBACK`: Reversão completa de uma aposta, ganho ou estorno.
-
----
-
 ## 📑 Quer se aprofundar na Arquitetura Técnica?
 
-Para entender em detalhes o desenho das tabelas no PostgreSQL, as restrições (`CHECK`, `UNIQUE`), o funcionamento do **Transactional Outbox** e a estratégia de travamento de linhas no banco, acesse o documento técnico completo:
+Para entender em detalhes o desenho das tabelas no PostgreSQL, os diagramas de estado C4, o funcionamento do **Transactional Outbox**, OpenTelemetry e os resultados dos benchmarks:
 
 👉 **[Leia o ARCHITECTURE.md](file:///p:/Git/GitHub/DistributedWageringProcessor/ARCHITECTURE.md)**

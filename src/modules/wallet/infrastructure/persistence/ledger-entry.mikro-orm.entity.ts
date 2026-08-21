@@ -1,5 +1,5 @@
 import { Entity, PrimaryKey, Property, Index } from "@mikro-orm/core";
-import { WalletLedgerEntry, LedgerDirection } from "@modules/wallet/domain/wallet-ledger-entry";
+import { WalletLedgerEntry, LedgerDirection, AccountType } from "@modules/wallet/domain/wallet-ledger-entry";
 
 @Entity({ tableName: "wallet_ledger_entries" })
 @Index({ name: "idx_ledger_wallet_created", properties: ["walletId", "createdAt"] })
@@ -15,6 +15,9 @@ export class LedgerEntryMikroEntity {
 
   @Property({ type: "string" })
   direction!: LedgerDirection;
+
+  @Property({ type: "string", default: AccountType.PlayerLiability })
+  accountType!: AccountType;
 
   @Property({ type: "decimal", precision: 18, scale: 2 })
   amount!: string;
@@ -37,6 +40,7 @@ export class LedgerEntryMikroEntity {
     entity.walletId = entry.walletId;
     entity.transactionId = entry.transactionId;
     entity.direction = entry.direction;
+    entity.accountType = entry.accountType;
     entity.amount = entry.money.amount;
     entity.currency = entry.money.currency;
     entity.balanceBefore = entry.balanceBefore.amount;
@@ -51,6 +55,7 @@ export class LedgerEntryMikroEntity {
       walletId: this.walletId,
       transactionId: this.transactionId,
       direction: this.direction,
+      accountType: this.accountType || AccountType.PlayerLiability,
       money: { amount: this.amount, currency: this.currency },
       balanceBefore: { amount: this.balanceBefore, currency: this.currency },
       balanceAfter: { amount: this.balanceAfter, currency: this.currency },

@@ -6,11 +6,18 @@ export enum LedgerDirection {
   Credit = "CREDIT",
 }
 
+export enum AccountType {
+  PlayerLiability = "PLAYER_LIABILITY",
+  HousePlatform = "HOUSE_PLATFORM",
+  ProviderSettlement = "PROVIDER_SETTLEMENT",
+}
+
 export interface CreateLedgerEntryProps {
   id?: string;
   walletId: string;
   transactionId: string;
   direction: LedgerDirection;
+  accountType?: AccountType;
   money: Money;
   balanceBefore: Money;
   balanceAfter: Money;
@@ -22,6 +29,7 @@ export interface LedgerEntryState {
   walletId: string;
   transactionId: string;
   direction: LedgerDirection;
+  accountType: AccountType;
   money: { amount: string; currency: string };
   balanceBefore: { amount: string; currency: string };
   balanceAfter: { amount: string; currency: string };
@@ -34,6 +42,7 @@ export class WalletLedgerEntry {
     public readonly walletId: string,
     public readonly transactionId: string,
     public readonly direction: LedgerDirection,
+    public readonly accountType: AccountType,
     public readonly money: Money,
     public readonly balanceBefore: Money,
     public readonly balanceAfter: Money,
@@ -45,12 +54,14 @@ export class WalletLedgerEntry {
   public static create(props: CreateLedgerEntryProps): WalletLedgerEntry {
     const id = props.id || crypto.randomUUID();
     const createdAt = props.createdAt || new Date();
+    const accountType = props.accountType || AccountType.PlayerLiability;
 
     const entry = new WalletLedgerEntry(
       id,
       props.walletId,
       props.transactionId,
       props.direction,
+      accountType,
       props.money,
       props.balanceBefore,
       props.balanceAfter,
@@ -72,6 +83,7 @@ export class WalletLedgerEntry {
       state.walletId,
       state.transactionId,
       state.direction,
+      state.accountType || AccountType.PlayerLiability,
       Money.from(state.money),
       Money.from(state.balanceBefore),
       Money.from(state.balanceAfter),
