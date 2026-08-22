@@ -38,7 +38,10 @@ import { HealthController } from "@shared/infrastructure/observability/health.co
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: [".env", ".env.example"],
+    }),
     MikroOrmModule.forRoot(mikroOrmConfig),
   ],
   controllers: [WalletController, WageringController, HealthController],

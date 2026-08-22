@@ -8,16 +8,16 @@ O projeto possui uma **suíte multinível de testes automatizados**, cobrindo de
 
 ```mermaid
 flowchart TD
-    Suite["🧪 SUÍTE DE TESTES E QUALIDADE"] --> Unit["1. TESTES UNITÁRIOS\n(bun run test)\nMoney, Wallet, WagerTransaction, FailureCodes"]
-    Suite --> Concurrency["2. TESTES DE CONCORRÊNCIA REAL\n(bun run test:concurrency)\n50 apostas simultâneas de R$ 80 em saldo R$ 100"]
-    Suite --> Chaos["3. TESTES DE CHAOS ENGINEERING & RESILIÊNCIA\n(bun run test:chaos)\nKill de processo (SIGKILL) pós-commit SQL pré-ACK SQS"]
-    Suite --> Smoke["4. TESTE RÁPIDO E2E SMOKE TEST\n(bun run test:smoke)\nFluxo E2E HTTP + Reconciliação em tempo real"]
-    Suite --> Load["5. BENCHMARKING & TESTE DE CARGA\n(bun run test:load)\nEstresse massivo em Hot Wallets com relatórios p50/p95/p99"]
+    Suite["🧪 SUÍTE DE TESTES E QUALIDADE"] --> Unit["1. TESTES UNITÁRIOS\n(task test / make test)\nMoney, Wallet, WagerTransaction, FailureCodes"]
+    Suite --> Concurrency["2. TESTES DE CONCORRÊNCIA REAL\n(task test:concurrency / make test-concurrency)\n50 apostas simultâneas de R$ 80 em saldo R$ 100"]
+    Suite --> Chaos["3. TESTES DE CHAOS ENGINEERING & RESILIÊNCIA\n(task test:chaos / make test-chaos)\nKill de processo (SIGKILL) pós-commit SQL pré-ACK SQS"]
+    Suite --> Smoke["4. TESTE RÁPIDO E2E SMOKE TEST\n(task test:smoke / make test-smoke)\nFluxo E2E HTTP + Reconciliação em tempo real"]
+    Suite --> Load["5. BENCHMARKING & TESTE DE CARGA\n(task test:load / make test-load)\nEstresse massivo em Hot Wallets com relatórios p50/p95/p99"]
 ```
 
 ---
 
-## 1. Testes Unitários (`bun run test`)
+## 1. Testes Unitários (`task test` / `make test`)
 
 Localização: `tests/unit/`
 
@@ -37,7 +37,7 @@ Focam na validação das regras de negócio atômicas e dos Value Objects, sem d
 
 ---
 
-## 2. Testes de Concorrência Real (`bun run test:concurrency`)
+## 2. Testes de Concorrência Real (`task test:concurrency` / `make test-concurrency`)
 
 Localização: `tests/concurrency/concurrency.test.ts`
 
@@ -49,7 +49,7 @@ Simulam um cenário real de disputa agressiva de saldo por um mesmo jogador em i
 
 ---
 
-## 3. Chaos Engineering & Resiliência (`bun run test:chaos`)
+## 3. Chaos Engineering & Resiliência (`task test:chaos` / `make test-chaos`)
 
 Localização: `tests/integration/chaos.test.ts`
 
@@ -61,7 +61,7 @@ Valida a resiliência do sistema diante de falhas fatais de infraestrutura:
 
 ---
 
-## 4. Teste Rápido E2E Smoke Test (`bun run test:smoke`)
+## 4. Teste Rápido E2E Smoke Test (`task test:smoke` / `make test-smoke`)
 
 Localização: `scripts/smoke-test.ts`
 
@@ -75,7 +75,7 @@ Um teste rápido de fumaça ideal para execução manual ou validação pré-dep
 
 ---
 
-## 5. Benchmarking & Teste de Carga (`bun run test:load`)
+## 5. Benchmarking & Teste de Carga (`task test:load` / `make test-load`)
 
 Localização: `scripts/load-test.ts`
 

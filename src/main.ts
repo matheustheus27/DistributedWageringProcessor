@@ -11,6 +11,15 @@ async function bootstrap(): Promise<void> {
   const appLogger = app.get(AppLoggerService);
   app.useLogger(appLogger);
 
+  try {
+    const { MikroORM } = await import("@mikro-orm/core");
+    const orm = app.get(MikroORM);
+    await orm.getMigrator().up();
+    appLogger.log("PostgreSQL database migrations applied successfully", "Bootstrap");
+  } catch (err: any) {
+    appLogger.error({ msg: "Database schema initialization failed", error: err.message }, "Bootstrap");
+  }
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

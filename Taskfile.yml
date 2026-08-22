@@ -6,62 +6,115 @@ tasks:
     cmds:
       - task --list
 
-  up:
-    desc: Start PostgreSQL, LocalStack, Prometheus & Grafana in Docker Compose
+  env:ensure:
+    desc: Auto-create .env from .env.example if missing
     cmds:
+      - cmd: powershell -Command "if (!(Test-Path .env)) { Copy-Item .env.example .env; Write-Host '.env auto-created from .env.example' }"
+        platforms: [windows]
+      - cmd: test -f .env || cp .env.example .env
+        platforms: [linux, darwin]
+
+  # --- Container Build & Lifecycle ---
+  build:
+    desc: Build and start PostgreSQL, LocalStack, Prometheus, Grafana & 3 app replicas
+    cmds:
+      - task: env:ensure
       - docker compose up --build --scale app=3 -d
 
-  down:
-    desc: Stop all Docker Compose containers
+  build:no-cache:
+    desc: Rebuild Docker images from scratch without using cache
+    cmds:
+      - task: env:ensure
+      - docker compose build --no-cache
+      - docker compose up --scale app=3 -d
+
+  build:down:
+    desc: Stop and remove all Docker Compose containers
     cmds:
       - docker compose down
 
-  restart:
+  build:restart:
     desc: Restart all Docker Compose containers
     cmds:
       - docker compose restart
 
-  migrate:
-    desc: Run PostgreSQL MikroORM database migrations
+  # --- Convenience Aliases ---
+  up:
+    desc: Alias for build
     cmds:
-      - bun run migration:up
+      - task: build
 
-  test:
-    desc: Run unit tests
+  down:
+    desc: Alias for build:down
     cmds:
-      - bun run test
+      - task: build:down
+
+  restart:
+    desc: Alias for build:restart
+    cmds:
+      - task: build:restart
+
+  # --- Database & Migrations ---
+  db:migrate:
+    desc: Run PostgreSQL MikroORM database migrations inside container
+    cmds:
+      - docker compose exec app bun run migration:up
+
+  db:rollback:
+    desc: Rollback last PostgreSQL MikroORM migration inside container
+    cmds:
+      - docker compose exec app bun run migration:down
+
+  # --- Tests & Quality Assurance ---
+  test:
+    desc: Run unit tests inside container
+    cmds:
+      - docker compose exec app bun test tests/unit
+
+  test:unit:
+    desc: Run unit tests inside container
+    cmds:
+      - docker compose exec app bun test tests/unit
 
   test:concurrency:
-    desc: Run real 50-request parallel concurrency tests
+    desc: Run real 50-request parallel concurrency tests inside container
     cmds:
-      - bun run test:concurrency
+      - docker compose exec app bun test tests/concurrency
 
   test:chaos:
-    desc: Run chaos engineering process recovery tests
+    desc: Run chaos engineering process recovery tests inside container
     cmds:
-      - bun run test:chaos
+      - docker compose exec app bun test tests/integration/chaos.test.ts
 
   test:smoke:
-    desc: Run E2E smoke test (2 parallel bets of 80 BRL on 100 BRL balance + reconciliation)
+    desc: Run E2E smoke test inside container
     cmds:
-      - bun run test:smoke
+      - docker compose exec app bun scripts/smoke-test.ts
 
   test:load:
-    desc: Run automated benchmarking and load test suite
+    desc: Run automated benchmarking and load test suite inside container
     cmds:
-      - bun run test:load
+      - docker compose exec app bun scripts/load-test.ts
 
-  dlq:inspect:
-    desc: Inspect SQS Dead Letter Queue messages
+  test:all:
+    desc: Run unit, concurrency, and chaos test suites sequentially
     cmds:
-      - bun run dlq:inspect
+      - task: test:unit
+      - task: test:concurrency
+      - task: test:chaos
+
+  # --- SQS Dead Letter Queue (DLQ) Management ---
+  dlq:inspect:
+    desc: Inspect SQS Dead Letter Queue messages inside container
+    cmds:
+      - docker compose exec app bun scripts/dlq-management.ts inspect
 
   dlq:replay:
-    desc: Replay DLQ messages back to main queue
+    desc: Replay DLQ messages back to main queue inside container
     cmds:
-      - bun run dlq:replay
+      - docker compose exec app bun scripts/dlq-management.ts replay
 
   dlq:purge:
-    desc: Purge SQS Dead Letter Queue messages
+    desc: Purge SQS Dead Letter Queue messages inside container
     cmds:
-      - bun run dlq:purge
+      - docker compose exec app bun scripts/dlq-management.ts purge

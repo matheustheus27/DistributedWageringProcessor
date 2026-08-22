@@ -1,4 +1,4 @@
-import { defineConfig } from "@mikro-orm/postgresql";
+import { defineConfig, SchemaGenerator } from "@mikro-orm/postgresql";
 import { Migrator } from "@mikro-orm/migrations";
 import { WalletMikroEntity } from "./src/modules/wallet/infrastructure/persistence/wallet.mikro-orm.entity";
 import { LedgerEntryMikroEntity } from "./src/modules/wallet/infrastructure/persistence/ledger-entry.mikro-orm.entity";
@@ -19,10 +19,11 @@ export default defineConfig({
   port: Number(process.env.DB_PORT) || 5432,
   user: process.env.DB_USER || "wagering_user",
   password: process.env.DB_PASSWORD || "wagering_password",
-  extensions: [Migrator],
+  extensions: [Migrator, SchemaGenerator],
   migrations: {
     path: "./src/shared/infrastructure/database/migrations",
     pathTs: "./src/shared/infrastructure/database/migrations",
+    glob: "!(*.d).{js,ts}",
     transactional: true,
   },
   debug: false,

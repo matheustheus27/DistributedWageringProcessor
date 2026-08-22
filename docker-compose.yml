@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -18,8 +16,25 @@ services:
       timeout: 5s
       retries: 5
 
+  migration:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wagering_migration
+    command: bun run migration:up
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=wagering_db
+      - DB_USER=wagering_user
+      - DB_PASSWORD=wagering_password
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   localstack:
-    image: localstack/localstack:latest
+    image: localstack/localstack:3.4.0
     container_name: wagering_localstack
     ports:
       - "4566:4566"
@@ -29,7 +44,7 @@ services:
     volumes:
       - "./scripts/init-localstack.sh:/etc/localstack/init/ready.d/init-localstack.sh"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:4566/_localstack/health || curl -f http://localhost:4566/health || exit 0"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -48,7 +63,7 @@ services:
     image: grafana/grafana:latest
     container_name: wagering_grafana
     ports:
-      - "3001:3000"
+      - "3000:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
@@ -76,12 +91,12 @@ services:
       - SQS_DLQ_URL=http://localstack:4566/000000000000/wager-transactions-dlq.fifo
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318/v1/traces
     ports:
-      - "3000-3002:3000"
+      - "3001-3003:3000"
     depends_on:
       postgres:
         condition: service_healthy
-      localstack:
-        condition: service_healthy
+      migration:
+        condition: service_completed_successfully
 
 volumes:
   postgres_data:

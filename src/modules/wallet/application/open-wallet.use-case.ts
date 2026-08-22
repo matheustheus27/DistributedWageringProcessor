@@ -9,6 +9,7 @@ import { WagerTransaction, WagerTransactionKind } from "@modules/wagering/domain
 import { IWagerTransactionRepository } from "@modules/wagering/application/ports/wager-transaction.repository.port";
 import { WalletBalanceChanged } from "@modules/messaging/domain/integration-events";
 import { OutboxMessage } from "@modules/messaging/domain/outbox-message";
+import { WalletLedgerEntry } from "@modules/wallet/domain/wallet-ledger-entry";
 import { Result } from "@core/application/result";
 import { DomainError } from "@core/errors/domain-error";
 
@@ -62,10 +63,11 @@ export class OpenWalletUseCase {
       });
 
       return await this.unitOfWork.execute(async () => {
-        await this.walletRepo.save(wallet);
+        let ledgerEntry: WalletLedgerEntry | undefined = undefined;
+        let openingTx: WagerTransaction | undefined = undefined;
 
         if (initialMoney.isPositive()) {
-          const openingTx = WagerTransaction.create({
+          openingTx = WagerTransaction.create({
             providerId: "internal",
             externalTransactionId: `opening-${wallet.id}`,
             idempotencyKey: `internal:opening-${wallet.id}`,
@@ -78,10 +80,13 @@ export class OpenWalletUseCase {
             money: initialMoney,
           });
 
-          const ledgerEntry = wallet.credit(initialMoney, openingTx.id);
+          ledgerEntry = wallet.credit(initialMoney, openingTx.id);
           openingTx.markProcessed(undefined);
+        }
 
-          await this.walletRepo.save(wallet);
+        await this.walletRepo.save(wallet);
+
+        if (openingTx && ledgerEntry) {
           await this.wagerTxRepo.save(openingTx);
           await this.ledgerRepo.save(ledgerEntry);
 

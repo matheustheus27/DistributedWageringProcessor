@@ -1,6 +1,11 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } from "@aws-sdk/client-sqs";
+import {
+  SQSClient,
+  ReceiveMessageCommand,
+  DeleteMessageCommand,
+  CreateQueueCommand,
+} from "@aws-sdk/client-sqs";
 import { ProcessWagerUseCase } from "@modules/wagering/application/process-wager.use-case";
 import { CorrelationContext } from "@shared/infrastructure/observability/correlation-context";
 
@@ -32,7 +37,8 @@ export class SqsConsumerService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  onModuleInit(): void {
+  async onModuleInit(): Promise<void> {
+    await this.ensureQueuesExist();
     this.isRunning = true;
     void this.pollLoop();
   }
@@ -40,6 +46,40 @@ export class SqsConsumerService implements OnModuleInit, OnModuleDestroy {
   onModuleDestroy(): void {
     this.isShuttingDown = true;
     this.isRunning = false;
+  }
+
+  private async ensureQueuesExist(): Promise<void> {
+    try {
+      // Auto-provision DLQ queue if missing
+      await this.sqsClient.send(
+        new CreateQueueCommand({
+          QueueName: "wager-transactions-dlq.fifo",
+          Attributes: { FifoQueue: "true", ContentBasedDeduplication: "true" },
+        }),
+      );
+
+      // Auto-provision main FIFO queue if missing
+      await this.sqsClient.send(
+        new CreateQueueCommand({
+          QueueName: "wager-transactions.fifo",
+          Attributes: {
+            FifoQueue: "true",
+            ContentBasedDeduplication: "true",
+            RedrivePolicy: JSON.stringify({
+              deadLetterTargetArn:
+                "arn:aws:sqs:us-east-1:000000000000:wager-transactions-dlq.fifo",
+              maxReceiveCount: "5",
+            }),
+          },
+        }),
+      );
+      this.logger.log("AWS SQS FIFO queues verified/provisioned successfully");
+    } catch (err: any) {
+      this.logger.warn({
+        msg: "SQS queue auto-provisioning skipped or queue already exists",
+        error: err.message,
+      });
+    }
   }
 
   private async pollLoop(): Promise<void> {

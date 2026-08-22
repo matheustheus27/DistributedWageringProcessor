@@ -78,11 +78,11 @@ Disponibilizamos comandos utilitários via CLI para operações na DLQ:
 
 ```bash
 # Inspecionar mensagens na DLQ
-bun run dlq:inspect  # ou 'make dlq-inspect' / 'task dlq:inspect'
+task dlq:inspect  # ou 'make dlq-inspect'
 
 # Reprocessar (Replay) mensagens da DLQ para a fila principal
-bun run dlq:replay   # ou 'make dlq-replay' / 'task dlq:replay'
+task dlq:replay   # ou 'make dlq-replay'
 
 # Purgar/Limpar a DLQ
-bun run dlq:purge    # ou 'task dlq:purge'
+task dlq:purge    # ou 'make dlq-purge'
 ```

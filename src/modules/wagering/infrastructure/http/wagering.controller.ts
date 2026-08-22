@@ -9,7 +9,7 @@ import {
   HttpStatus,
   UseGuards,
 } from "@nestjs/common";
-import { Response } from "express";
+import type { Response } from "express";
 import { CreateWagerTransactionDto } from "./dto/create-wager-transaction.dto";
 import { ProcessWagerUseCase } from "@modules/wagering/application/process-wager.use-case";
 import { GetWagerTransactionUseCase } from "@modules/wagering/application/get-wager-transaction.use-case";

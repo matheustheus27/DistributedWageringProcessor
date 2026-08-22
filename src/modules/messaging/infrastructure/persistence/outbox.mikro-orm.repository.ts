@@ -10,7 +10,7 @@ export class OutboxMikroRepository implements IOutboxRepository {
 
   public async save(message: OutboxMessage): Promise<void> {
     const entity = OutboxMessageMikroEntity.fromDomain(message);
-    await this.em.persistAndFlush(entity);
+    await this.em.upsert(entity);
   }
 
   public async findPending(limit: number): Promise<OutboxMessage[]> {

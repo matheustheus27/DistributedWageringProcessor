@@ -15,6 +15,6 @@ export class InboxMikroRepository implements IInboxRepository {
 
   public async save(message: InboxMessage): Promise<void> {
     const entity = InboxMessageMikroEntity.fromDomain(message);
-    await this.em.persistAndFlush(entity);
+    await this.em.upsert(entity);
   }
 }

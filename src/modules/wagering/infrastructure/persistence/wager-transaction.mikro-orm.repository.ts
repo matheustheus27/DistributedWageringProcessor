@@ -43,6 +43,6 @@ export class WagerTransactionMikroRepository implements IWagerTransactionReposit
 
   public async save(transaction: WagerTransaction): Promise<void> {
     const entity = WagerTransactionMikroEntity.fromDomain(transaction);
-    await this.em.persistAndFlush(entity);
+    await this.em.upsert(entity);
   }
 }

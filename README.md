@@ -162,6 +162,7 @@ DistributedWageringProcessor/
 │   ├── 📄 deployment.yaml              # Deployment com 3 réplicas e Liveness/Readiness probes
 │   ├── 📄 hpa.yaml                     # HorizontalPodAutoscaler (3-10 pods)
 │   └── 📄 service.yaml                 # ClusterIP Service
+├── 📁 .vscode/                         # Configurações padronizadas de IDE (Formatters, EOL e Extensions)
 ├── 📁 docker/                          # Configurações de Monitoramento
 │   ├── 📁 grafana/                     # Provisionamento de Dashboards Grafana
 │   └── 📜 prometheus.yml               # Configuração do Prometheus Metrics Scraper
@@ -173,6 +174,8 @@ DistributedWageringProcessor/
 ├── ⚙️ mikro-orm.config.ts             # Configuração ORM, conexão PostgreSQL e Migrações
 ├── 📜 package.json                    # Dependências da aplicação e scripts de execução Bun
 ├── 📄 tsconfig.json                   # Configuração estrita do TypeScript e Path Aliases (@core, @modules)
+├── ⚙️ .editorconfig                    # Padronização de formatação de código entre editores
+├── 🙈 .gitignore                      # Regras de exclusão de artefatos e segredos para Git
 ├── 📖 README.md                       # Documentação didática do projeto
 ├── 📐 ARCHITECTURE.md                 # Documento detalhado de decisões arquiteturais, C4 e banco de dados
 └── 🔒 .env.example                    # Modelo de variáveis de ambiente

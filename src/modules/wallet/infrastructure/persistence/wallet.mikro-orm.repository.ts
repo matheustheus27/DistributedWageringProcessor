@@ -41,6 +41,6 @@ export class WalletMikroRepository implements IWalletRepository {
 
   public async save(wallet: Wallet): Promise<void> {
     const entity = WalletMikroEntity.fromDomain(wallet);
-    await this.em.persistAndFlush(entity);
+    await this.em.upsert(entity);
   }
 }

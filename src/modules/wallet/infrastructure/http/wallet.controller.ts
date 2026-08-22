@@ -9,7 +9,7 @@ import {
   HttpStatus,
   UseGuards,
 } from "@nestjs/common";
-import { Response } from "express";
+import type { Response } from "express";
 import { CreateWalletDto } from "./dto/create-wallet.dto";
 import { OpenWalletUseCase } from "@modules/wallet/application/open-wallet.use-case";
 import { GetWalletUseCase } from "@modules/wallet/application/get-wallet.use-case";

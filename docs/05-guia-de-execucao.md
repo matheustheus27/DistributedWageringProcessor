@@ -12,45 +12,63 @@ Para facilitar os testes manuais e a homologação por desenvolvedores e QA, dis
 
 ---
 
-## 2. Comandos de Automação (Makefile & Taskfile)
+## 2. Comandos de Automação Padronizados (Makefile & Taskfile)
 
-Disponibilizamos comandos utilitários para acelerar o fluxo de desenvolvimento:
+Todos os comandos de teste executam **diretamente dentro do container Docker da aplicação** (`docker compose exec app`), sem necessidade de instalar o Bun no sistema operacional local.
 
+### 🏗️ Build e Ciclo de Vida dos Containers (`build:*`)
 | Comando Make | Comando Task | Descrição |
 |---|---|---|
-| `make up` | `task up` | Sobe PostgreSQL, LocalStack, Prometheus, Grafana e 3 réplicas da aplicação. |
-| `make down` | `task down` | Para todos os containers Docker Compose. |
-| `make migrate` | `task migrate` | Aplica as migrações SQL no banco PostgreSQL via MikroORM. |
-| `make test` | `task test` | Executa os testes unitários (`bun test tests/unit`). |
-| `make test-concurrency` | `task test:concurrency` | Executa os testes de concorrência real (50 requisições simultâneas). |
-| `make test-chaos` | `task test:chaos` | Executa o teste de resiliência e crash pós-commit (`chaos.test.ts`). |
-| `make smoke-test` | `task test:smoke` | Executa o teste rápido E2E de corrida de saldo e reconciliação. |
+| `make build` | `task build` (ou `task up`) | Sobe PostgreSQL, LocalStack, Prometheus, Grafana e 3 réplicas da aplicação. |
+| `make build-no-cache` | `task build:no-cache` | Recontrói as imagens Docker do zero sem utilizar cache e inicia os containers. |
+| `make build-down` | `task build:down` (ou `task down`) | Encerra e remove todos os containers Docker Compose. |
+| `make build-restart` | `task build:restart` (ou `task restart`) | Reinicia todas as instâncias e serviços do cluster. |
+
+### 🗄️ Banco de Dados e Migrações (`db:*`)
+| Comando Make | Comando Task | Descrição |
+|---|---|---|
+| `make db-migrate` | `task db:migrate` | Aplica as migrações SQL pendentes via MikroORM dentro do container. |
+| `make db-rollback` | `task db:rollback` | Reverte a última migração SQL aplicada. |
+
+### 🧪 Suíte de Testes e Qualidade (`test:*`)
+| Comando Make | Comando Task | Descrição |
+|---|---|---|
+| `make test` | `task test` | Executa os testes unitários da aplicação (`tests/unit`). |
+| `make test-concurrency` | `task test:concurrency` | Executa os testes de corrida de saldo com 50 requisições paralelas. |
+| `make test-chaos` | `task test:chaos` | Executa o teste de resiliência e recuperação de crashes (`SIGKILL`). |
+| `make test-smoke` | `task test:smoke` | Executa o teste rápido E2E de fumaça e reconciliação financeira. |
 | `make test-load` | `task test:load` | Executa o teste de carga e benchmarking com relatório estatístico. |
-| `make dlq-inspect` | `task dlq:inspect` | Inspeciona as mensagens atualmente retidas na Dead Letter Queue. |
+| `make test-all` | `task test:all` | Executa sequencialmente as suítes de testes unitários, concorrência e chaos. |
+
+### 📬 Gestão de Dead Letter Queue (`dlq:*`)
+| Comando Make | Comando Task | Descrição |
+|---|---|---|
+| `make dlq-inspect` | `task dlq:inspect` | Inspeciona as mensagens atualmente retidas na Dead Letter Queue SQS. |
 | `make dlq-replay` | `task dlq:replay` | Reprocessa e reenvia as mensagens da DLQ para a fila principal. |
+| `make dlq-purge` | `task dlq:purge` | Purga (apaga) todas as mensagens da Dead Letter Queue SQS. |
 
 ---
 
 ## 3. Dashboard Operacional (Grafana & Prometheus)
 
-Ao subir os containers com `make up` ou `docker compose up --scale app=3`, acesse:
+Ao subir os containers com `task build` ou `make build`, acesse:
 
-- 📊 **Grafana Dashboard**: `http://localhost:3001`
+- 📊 **Grafana Dashboard**: `http://localhost:3000`
   - **Usuário**: `admin`
   - **Senha**: `admin`
   - **Dashboard Pré-carregado**: *Distributed Wagering Processor Dashboard*
   - **Painéis em Tempo Real**: Taxa de Apostas Processadas vs Rejeitadas, Lag de Mensagens na Outbox, Taxa de Duplicatas e Latência p95.
 - 🔥 **Prometheus Scraper**: `http://localhost:9090`
-- 🏥 **Health Check Readiness**: `http://localhost:3000/health/ready`
+- 🏥 **Health Check Readiness (App Instância 1)**: `http://localhost:3001/health/ready`
 
 ---
 
-## 4. Teste de Carga Automatizado (`bun run test:load`)
+## 4. Teste de Carga Automatizado (`task test:load`)
 
-O script [`scripts/load-test.ts`](file:///p:/Git/GitHub/DistributedWageringProcessor/scripts/load-test.ts) executa estresse de alta concorrência em tempo real contra a aplicação:
+O script [`scripts/load-test.ts`](file:///p:/Git/GitHub/DistributedWageringProcessor/scripts/load-test.ts) executa estresse de alta concorrência em tempo real contra a aplicação dentro do container:
 
 ```bash
-bun run test:load
+task test:load
 ```
 
 ### Exemplo de Saída do Benchmarking:

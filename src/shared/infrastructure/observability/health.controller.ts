@@ -1,5 +1,5 @@
 import { Controller, Get, Res, HttpStatus } from "@nestjs/common";
-import { Response } from "express";
+import type { Response } from "express";
 import { EntityManager } from "@mikro-orm/postgresql";
 import { ConfigService } from "@nestjs/config";
 import { SQSClient, ListQueuesCommand } from "@aws-sdk/client-sqs";
