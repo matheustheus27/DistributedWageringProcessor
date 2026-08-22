@@ -18,9 +18,9 @@
     "dlq:inspect": "bun scripts/dlq-management.ts inspect",
     "dlq:replay": "bun scripts/dlq-management.ts replay",
     "dlq:purge": "bun scripts/dlq-management.ts purge",
-    "migration:create": "mikro-orm migration:create",
-    "migration:up": "mikro-orm migration:up",
-    "migration:down": "mikro-orm migration:down"
+    "migration:create": "mikro-orm migration:create --config mikro-orm.config.ts",
+    "migration:up": "mikro-orm migration:up --config mikro-orm.config.ts",
+    "migration:down": "mikro-orm migration:down --config mikro-orm.config.ts"
   },
   "dependencies": {
     "@aws-sdk/client-sqs": "^3.600.0",
