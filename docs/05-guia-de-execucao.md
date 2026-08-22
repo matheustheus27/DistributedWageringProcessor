@@ -30,6 +30,9 @@ Todos os comandos de teste executam **diretamente dentro do container Docker da 
 | `make db-migrate` | `task db:migrate` | Aplica as migrações SQL pendentes via MikroORM dentro do container. |
 | `make db-rollback` | `task db:rollback` | Reverte a última migração SQL aplicada. |
 
+> [!NOTE]
+> **Execução Automática de Migrações**: Ao subir os containers com `make build` ou `task build`, as migrações SQL pendentes são **executadas automaticamente** por um container de inicialização (`wagering_migration`) antes de liberar a subida das réplicas da aplicação. Os comandos manuais `make db-migrate` e `make db-rollback` permanecem disponíveis para controle sob demanda em ambiente de desenvolvimento.
+
 ### 🧪 Suíte de Testes e Qualidade (`test:*`)
 | Comando Make | Comando Task | Descrição |
 |---|---|---|

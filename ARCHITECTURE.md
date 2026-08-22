@@ -51,6 +51,7 @@ Para construir uma plataforma financeira de apostas pronta para produção, resi
 | **Precisão Monetária** | **Value Object `Money` + `Decimal.js`** | Eliminação completa do tipo `number`/`float`. Toda representação monetária é serializada em string decimal com 2 casas (`"25.00"`). |
 | **Contabilidade Auditável** | **Partidas Dobradas (*Double-Entry Bookkeeping*)** | Lançamentos contábeis imutáveis com contas `PLAYER_LIABILITY`, `HOUSE_PLATFORM` e `PROVIDER_SETTLEMENT` onde débitos e créditos são balanceados (`isBalanced()`). |
 | **Estratégia de Autenticação** | **Porta de Extensão (`ProviderAuthGuard`)** | Para garantir flexibilidade no envio de requisições por múltiplos provedores sem prender o sistema a esquemas artesanais de senhas, a autenticação foi delegada à porta `ProviderIdentityPort`, pronta para integração OIDC com Keycloak/Zitadel. |
+| **Migração Automática do Schema** | **Init Container (`wagering_migration`) + ORM Bootstrap** | O container de inicialização executa `bun run migration:up` antes da liberação dos pods de aplicação (`service_completed_successfully`). Como proteção adicional, o `main.ts` aciona `orm.getMigrator().up()` no bootstrap, eliminando falhas de tabelas inexistentes. |
 
 ---
 
