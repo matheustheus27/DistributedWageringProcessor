@@ -4,186 +4,186 @@
 ![GlassHub TypeScript](https://glasshub-quasar.vercel.app/api/badge?label=Typescript&value=5.4&icon=typescript&url=https%3A%2F%2Freact.dev&shape=rounded&style=glass&glow=true&theme=glass-dark)
 ![GlassHub NestJS](https://glasshub-quasar.vercel.app/api/badge?label=NestJS&value=10.3&icon=javascript&url=https%3A%2F%2Freact.dev&shape=rounded&style=glass&glow=true&theme=glass-dark)
 ![GlassHub PostgreSQL](https://glasshub-quasar.vercel.app/api/badge?label=PostgreSQL&value=16&icon=database&url=https%3A%2F%2Freact.dev&shape=rounded&style=glass&glow=true&theme=glass-dark)
-![GlassHub AWS SQS](https://glasshub-quasar.vercel.app/api/badge?label=AWSSQS&value=FIFO&icon=aws&url=https%3A%2F%2Freact.dev&shape=rounded&style=glass&glow=true&theme=glass-dark)
+![GlassHub AWS SQS](https://glasshub-quasar.vercel.app/api/badge?label=AWS+SQS&value=FIFO&icon=aws&url=https%3A%2F%2Freact.dev&shape=rounded&style=glass&glow=true&theme=glass-dark)
 ![GlassHub Docker](https://glasshub-quasar.vercel.app/api/badge?label=Docker&value=Compose&icon=docker&url=https%3A%2F%2Freact.dev&shape=rounded&style=glass&glow=true&theme=glass-dark)
 ![GlassHub License](https://glasshub-quasar.vercel.app/api/badge?label=License&value=MIT&icon=license&url=https%3A%2F%2Freact.dev&shape=rounded&style=glass&glow=true&theme=glass-dark)
 
 > [!IMPORTANT]
-> **Microserviço financeiro distribuído de alta concorrência** para processamento de transações de apostas em tempo real.
-> Garante consistência financeira estrita, idempotência persistente, ledger contábil imutável (Partidas Dobradas) e resiliência total contra falhas distribuídas e redelivery de mensagens.
+> **High-concurrency distributed financial microservice** for real-time betting transaction processing.
+> Guarantees strict financial consistency, persistent idempotency, immutable accounting ledger (Double-Entry Bookkeeping), and total resilience against distributed failures and message redelivery.
 
 ---
 
-## 💡 Entendendo o Problema (Sem Complicação!)
+## 💡 Understanding the Problem (Without the Noise!)
 
-Imagine que você está jogando em um cassino online. Você faz uma aposta de **R$ 25,00**. Nesse exato milissegundo:
-1. O jogo avisa o sistema: *"Debite R$ 25,00 do jogador X"*.
-2. A sua conexão de internet oscila e o jogo reenvia a mesma mensagem **3 vezes**.
-3. Ao mesmo tempo, você abriu o jogo em outra aba e tentou apostar mais **R$ 80,00**, mas seu saldo inicial era de apenas **R$ 100,00**.
+Imagine playing at an online casino. You place a **$25.00** bet. In that exact millisecond:
+1. The game notifies the system: *"Debit $25.00 from player X"*.
+2. Your internet connection hiccups and the game re-sends the same message **3 times**.
+3. Simultaneously, you opened the game in another tab and tried to bet another **$80.00**, but your initial balance was only **$100.00**.
 
 > [!WARNING]
-> **O que um sistema financeiro de verdade NÃO pode deixar acontecer?**
-> - ❌ Não pode descontar a mesma aposta 3 vezes (**Idempotência**).
-> - ❌ Não pode deixar o saldo ficar negativo (**Consistência Financeira**).
-> - ❌ Não pode perder a conta ou calcular centavos errado (**Precisão Decimal `Money`**).
-> - ❌ Não pode travar nem dar erro se tiverem 10.000 pessoas jogando juntas (**Concorrência & Resiliência**).
+> **What can a real-world financial system NEVER allow to happen?**
+> - ❌ It cannot debit the same bet 3 times (**Idempotency**).
+> - ❌ It cannot allow the balance to go negative (**Financial Consistency**).
+> - ❌ It cannot lose track of entries or calculate cents wrong (**`Money` Decimal Precision**).
+> - ❌ It cannot lock up or fail when 10,000 people play simultaneously (**Concurrency & Resilience**).
 
-Este projeto é a solução para esse problema: um microserviço financeiro distribuído, resiliente a falhas e pronto para rodar em produção em múltiplos servidores simultâneos.
+This project is the solution to that problem: a fault-tolerant, production-ready distributed financial microservice capable of running across multiple servers concurrently.
 
 ---
 
-## 🔄 Fluxo de Dados e Transacionalidade Atômica
+## 🔄 Data Flow and Atomic Transactionality
 
-O diagrama abaixo ilustra o ciclo de vida completo de uma transação de aposta, desde a chegada da requisição até a persistência atômica no banco e a publicação assíncrona do evento:
+The sequence diagram below illustrates the complete lifecycle of a wagering transaction, from request arrival to atomic persistence in the database and asynchronous event publication:
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Provider as Provedor / Cliente
+    actor Provider as Provider / Client
     participant API as Controller / SQS Consumer
     participant UseCase as ProcessWagerUseCase
     participant DB as PostgreSQL Database
     participant OutboxWorker as Outbox Worker
     participant SQS as SQS FIFO Queue
 
-    Provider->>API: POST /wagering/transactions (HTTP ou SQS)
+    Provider->>API: POST /wagering/transactions (HTTP or SQS)
     API->>UseCase: execute(ProcessWagerCommand)
 
-    note over UseCase, DB: 🔒 Transação Atômica SQL (em.transactional)
-    UseCase->>DB: 1. SELECT FOR UPDATE com lock_timeout 2s (Lock na Wallet)
-    UseCase->>DB: 2. Inserir InboxMessage (Deduplicação)
-    UseCase->>DB: 3. Validar Idempotência (payloadHash SHA-256)
-    UseCase->>DB: 4. Validar Regra de Saldo (Saldo >= Valor)
-    UseCase->>DB: 5. Debitar/Creditar Wallet & Inserir LedgerEntry
-    UseCase->>DB: 6. Inserir WagerTransaction (PROCESSED / REJECTED)
-    UseCase->>DB: 7. Inserir OutboxMessage (Evento de Integração)
-    DB-->>UseCase: Commit Confirmado
+    note over UseCase, DB: 🔒 Atomic SQL Transaction (em.transactional)
+    UseCase->>DB: 1. SELECT FOR UPDATE with lock_timeout 2s (Wallet Lock)
+    UseCase->>DB: 2. Insert InboxMessage (Deduplication)
+    UseCase->>DB: 3. Validate Idempotency (payloadHash SHA-256)
+    UseCase->>DB: 4. Validate Balance Rule (Balance >= Amount)
+    UseCase->>DB: 5. Debit/Credit Wallet & Insert LedgerEntry
+    UseCase->>DB: 6. Insert WagerTransaction (PROCESSED / REJECTED)
+    UseCase->>DB: 7. Insert OutboxMessage (Integration Event)
+    DB-->>UseCase: Commit Confirmed
 
     UseCase-->>API: Result.ok(ProcessWagerResponse)
-    API-->>Provider: Resposta HTTP 200 OK / SQS ACK (DeleteMessage)
+    API-->>Provider: HTTP 200 OK Response / SQS ACK (DeleteMessage)
 
-    note over OutboxWorker, SQS: ⚡ Polling Assíncrono Desacoplado
-    OutboxWorker->>DB: SELECT FOR UPDATE SKIP LOCKED (Mensagens Pendentes)
+    note over OutboxWorker, SQS: ⚡ Asynchronous Decoupled Polling
+    OutboxWorker->>DB: SELECT FOR UPDATE SKIP LOCKED (Pending Messages)
     OutboxWorker->>SQS: Publish Event (WagerTransactionProcessed)
     OutboxWorker->>DB: UPDATE outbox_messages SET published_at = NOW()
 ```
 
 ---
 
-## 🌟 8 Diferenciais de Alta Engenharia Incorporados
+## 🌟 8 High-Engineering Highlights
 
-1. **⚡ Suite Automatizada de Testes de Carga (`bun run test:load`)**: Script de benchmarking simulando cenários de *Hot Wallet* (100 requisições simultâneas na mesma conta) e injeção massiva de duplicatas.
-2. **💥 Chaos Engineering & Resiliência (`bun run test:chaos`)**: Teste de integração automatizado simulando queda de processo (`SIGKILL`) pós-commit.
-3. **📊 Double-Entry Bookkeeping (Partidas Dobradas)**: Lançamentos contábeis balanceados entre `PLAYER_LIABILITY`, `HOUSE_PLATFORM` e `PROVIDER_SETTLEMENT`.
-4. **🔍 Context Logging & Telemetria**: `AsyncLocalStorage` nativo propagando `correlationId`, `walletId` e `traceId` automaticamente em logs JSON Pino.
-5. **📥 Gestão de DLQ CLI (`bun run dlq:inspect` / `bun run dlq:replay`)**: Ferramenta de inspeção e reprocessamento de mensagens da Dead Letter Queue.
-6. **🔌 Postman & Insomnia Collections Prontas**: Coleções interativas prontas em `docs/` com scripts de automação de variáveis embutidos.
-7. **⚙️ CI/CD Pipeline (GitHub Actions)**: Workflows automatizados em `.github/workflows/ci.yml`.
-8. **☸️ Manifestos Kubernetes Produção-Ready (`k8s/`)**: Deployment com HPA de 3-10 réplicas, ConfigMap, Service e Liveness/Readiness probes.
+1. **⚡ Automated Load Testing Suite (`bun run test:load`)**: Benchmarking script simulating *Hot Wallet* contention (100 simultaneous requests on the same account) and massive duplicate injection.
+2. **💥 Chaos Engineering & Resilience (`bun run test:chaos`)**: Automated integration test simulating process crashes (`SIGKILL`) post-database commit.
+3. **📊 Double-Entry Bookkeeping**: Balanced accounting entries across `PLAYER_LIABILITY`, `HOUSE_PLATFORM`, and `PROVIDER_SETTLEMENT`.
+4. **🔍 Context Logging & Telemetry**: Native `AsyncLocalStorage` propagating `correlationId`, `walletId`, and `traceId` automatically across JSON Pino logs.
+5. **📥 DLQ CLI Management (`bun run dlq:inspect` / `bun run dlq:replay`)**: Tooling for inspecting and replaying Dead Letter Queue messages.
+6. **🔌 Postman & Insomnia Collections Ready**: Ready-to-use collections in `docs/` with built-in variable automation scripts.
+7. **⚙️ CI/CD Pipeline (GitHub Actions)**: Automated workflows configured in `.github/workflows/ci.yml`.
+8. **☸️ Production-Ready Kubernetes Manifests (`k8s/`)**: Deployment configured with HPA (3-10 replicas), ConfigMap, Service, and Liveness/Readiness probes.
 
 ---
 
-## 🚀 Como Rodar o Projeto em 1 Comando
+## 🚀 How to Run in 1 Command
 
 > [!TIP]
-> **Usando Taskfile ou Makefile (Recomendado)**
+> **Using Taskfile or Makefile (Recommended)**
 
 ```bash
-task up         # Ou 'make up' -> Sobe PostgreSQL, LocalStack, Prometheus e Grafana
-task test       # Ou 'make test' -> Executa testes unitários
-task test:smoke # Ou 'make smoke-test' -> Executa o teste rápido E2E de corrida de saldo
-task test:load  # Ou 'make test-load' -> Executa teste de carga e benchmarking
+task up         # Or 'make up' -> Launches PostgreSQL, LocalStack, Prometheus, and Grafana
+task test       # Or 'make test' -> Runs unit tests
+task test:smoke # Or 'make test-smoke' -> Runs fast E2E smoke test & balance race verification
+task test:load  # Or 'make test-load' -> Runs automated load test & benchmarking
 ```
 
-### Usando Docker Compose Direto
+### Using Direct Docker Compose
 ```bash
 docker compose up --build --scale app=3
 ```
 
 ---
 
-## 📂 Organização do Código (Estrutura de Diretórios)
+## 📂 Codebase Organization (Directory Structure)
 
 ```
 DistributedWageringProcessor/
-├── 📁 .github/                         # Workflows de Integração Contínua (CI/CD)
+├── 📁 .github/                         # Continuous Integration Workflows (CI/CD)
 │   └── 📁 workflows/
-│       └── ⚙️ ci.yml                    # Pipeline GitHub Actions (Build, Migrações, Testes)
-├── 📁 docs/                            # 📚 Documentação Técnica Detalhada por Módulos
-│   ├── 📄 00-visao-geral.md            # Contexto do negócio iGaming e invariantes globais
-│   ├── 📄 01-arquitetura.md            # Arquitetura Hexagonal, DDD e Diagramas C4
-│   ├── 📄 02-api-e-payloads.md         # Especificação completa da API, DTOs e FailureCodes
-│   ├── 📄 03-mensageria-e-sqs.md       # Payloads SQS FIFO, Inbox Pattern e DLQ CLI
-│   ├── 📄 04-concorrencia-e-locks.md   # Pessimistic Locking, Hash Canônico e Double-Entry
-│   ├── 📄 05-guia-de-execucao.md       # Comandos de automação, Grafana e Testes de Carga
-│   ├── 📄 06-testes-e-qualidade.md     # Documentação detalhada de cada tipo de teste
-│   ├── 📜 wagering-api.postman_collection.json  # Coleção Postman com Automação de Variáveis
-│   └── 📜 wagering-api.insomnia_collection.json # Coleção Insomnia com Encadeamento de Respostas
-├── 📁 src/                             # Código-fonte da aplicação (Hexagonal Architecture)
-│   ├── 📁 core/                        # Núcleo compartilhado DDD (Domain primitives, Result, Errors)
-│   │   ├── 📁 application/             # Monad funcional Result<T, E>
-│   │   ├── 📁 domain/                  # ValueObject e AggregateRoot base
-│   │   └── 📁 errors/                  # Hierarquia AppError, DomainError e FailureCode enum
-│   ├── 📁 modules/                     # Módulos de Domínio da Aplicação
-│   │   ├── 📁 messaging/               # 📬 Transacional Outbox & Inbox
-│   │   │   ├── 📁 application/         # Contratos de repositório Inbox e Outbox
-│   │   │   ├── 📁 domain/              # Entities InboxMessage, OutboxMessage e IntegrationEvents
-│   │   │   └── 📁 infrastructure/      # Repositórios MikroORM, SQS Producer/Consumer e Poller Worker
-│   │   ├── 📁 wagering/                # 🎲 Gestão de Apostas & Transações
+│       └── ⚙️ ci.yml                   # GitHub Actions Pipeline (Build, Migrations, Tests)
+├── 📁 docs/                            # 📚 Detailed Technical Documentation by Module
+│   ├── 📄 00-overview.md               # iGaming business context and global invariants
+│   ├── 📄 01-architecture.md           # Hexagonal Architecture, DDD, and C4 Diagrams
+│   ├── 📄 02-api-and-payloads.md       # Complete API spec, DTOs, and FailureCodes
+│   ├── 📄 03-messaging-and-sqs.md      # SQS FIFO payloads, Inbox Pattern, and DLQ CLI
+│   ├── 📄 04-concurrency-and-locks.md  # Pessimistic Locking, Canonical Hash, and Double-Entry
+│   ├── 📄 05-execution-guide.md        # Automation commands, Grafana, and Load Testing
+│   ├── 📄 06-testing-and-quality.md             # Detailed documentation for every test suite
+│   ├── 📜 wagering-api.postman_collection.json  # Postman collection with variable automation
+│   └── 📜 wagering-api.insomnia_collection.json # Insomnia collection with response chaining
+├── 📁 src/                             # Application Source Code (Hexagonal Architecture)
+│   ├── 📁 core/                        # Shared DDD Core (Domain primitives, Result, Errors)
+│   │   ├── 📁 application/             # Result<T, E> functional monad
+│   │   ├── 📁 domain/                  # Base ValueObject and AggregateRoot
+│   │   └── 📁 errors/                  # AppError, DomainError hierarchy, and FailureCode enum
+│   ├── 📁 modules/                     # Application Domain Modules
+│   │   ├── 📁 messaging/               # 📬 Transactional Outbox & Inbox
+│   │   │   ├── 📁 application/         # Inbox and Outbox repository contracts
+│   │   │   ├── 📁 domain/              # InboxMessage, OutboxMessage, and IntegrationEvents
+│   │   │   └── 📁 infrastructure/      # MikroORM repos, SQS Producer/Consumer, and Poller Worker
+│   │   ├── 📁 wagering/                # 🎲 Wager & Transaction Management
 │   │   │   ├── 📁 application/         # Use Cases (ProcessWagerUseCase, GetWagerTransactionUseCase)
-│   │   │   ├── 📁 domain/              # Entity WagerTransaction, Estados e Regras por Kind
-│   │   │   └── 📁 infrastructure/      # Controller HTTP, DTOs e PendingReferenceWorker
-│   │   └── 📁 wallet/                  # 👛 Gestão de Carteiras & Ledger Auditável
+│   │   │   ├── 📁 domain/              # Entity WagerTransaction, States, and Rules by Kind
+│   │   │   └── 📁 infrastructure/      # HTTP Controller, DTOs, and PendingReferenceWorker
+│   │   └── 📁 wallet/                  # 👛 Wallet Management & Auditable Ledger
 │   │       ├── 📁 application/         # Use Cases (OpenWallet, GetWallet, GetLedger, ReconcileWallet)
 │   │       ├── 📁 domain/              # Wallet Aggregate Root, Money Value Object, WalletLedgerEntry
-│   │       └── 📁 infrastructure/      # Controller HTTP, DTOs, Entidades e Repositórios MikroORM
-│   ├── 📁 shared/                      # Infraestrutura compartilhada da aplicação
-│   │   ├── 📁 application/             # Contrato IUnitOfWork
-│   │   └── 📁 infrastructure/          # Database UnitOfWork, Migrações SQL, AsyncLocalStorage, Telemetria e Health
-│   └── 📄 main.ts                      # Ponto de entrada NestJS com Bootstrapping e Pipes
-├── 📁 tests/                           # Suíte de Testes Automatizados
-│   ├── 📁 unit/                        # Testes unitários (Money, Wallet, WagerTransaction)
-│   ├── 📁 integration/                 # Testes de integração e Chaos Engineering (chaos.test.ts)
-│   └── 📁 concurrency/                 # Testes de concorrência e consistência financeira
-├── 📁 scripts/                         # Scripts de Automação & Load Test
-│   ├── 📜 smoke-test.ts                # Teste E2E rápido de fumaça e corrida de saldo (bun run test:smoke)
-│   ├── 📜 load-test.ts                 # Script de benchmarking e estresse de carga (bun run test:load)
-│   ├── 📜 dlq-management.ts            # CLI de inspeção e replay de DLQ (bun run dlq:replay)
-│   └── 📜 init-localstack.sh           # Auto-provisionamento de Filas FIFO SQS no LocalStack
-├── 📁 k8s/                             # Manifestos Produção-Ready Kubernetes
-│   ├── 📄 configmap.yaml               # Configurações do Cluster K8s
-│   ├── 📄 deployment.yaml              # Deployment com 3 réplicas e Liveness/Readiness probes
+│   │       └── 📁 infrastructure/      # HTTP Controller, DTOs, Entities, and MikroORM repos
+│   ├── 📁 shared/                      # Shared Application Infrastructure
+│   │   ├── 📁 application/             # IUnitOfWork contract
+│   │   └── 📁 infrastructure/          # Database UnitOfWork, SQL Migrations, AsyncLocalStorage, Telemetry, and Health
+│   └── 📄 main.ts                      # NestJS Entrypoint with Bootstrapping and Pipes
+├── 📁 tests/                           # Automated Test Suite
+│   ├── 📁 unit/                        # Unit tests (Money, Wallet, WagerTransaction)
+│   ├── 📁 integration/                 # Integration and Chaos Engineering tests (chaos.test.ts)
+│   └── 📁 concurrency/                 # Concurrency and financial consistency tests
+├── 📁 scripts/                         # Automation & Load Test Scripts
+│   ├── 📜 smoke-test.ts                # Fast E2E smoke test & balance race check (bun run test:smoke)
+│   ├── 📜 load-test.ts                 # Benchmarking and load stress script (bun run test:load)
+│   ├── 📜 dlq-management.ts            # DLQ inspection and replay CLI (bun run dlq:replay)
+│   └── 📜 init-localstack.sh           # Auto-provisioning of SQS FIFO queues in LocalStack
+├── 📁 k8s/                             # Production-Ready Kubernetes Manifests
+│   ├── 📄 configmap.yaml               # K8s Cluster Configuration
+│   ├── 📄 deployment.yaml              # Deployment with 3 replicas and Liveness/Readiness probes
 │   ├── 📄 hpa.yaml                     # HorizontalPodAutoscaler (3-10 pods)
 │   └── 📄 service.yaml                 # ClusterIP Service
-├── 📁 .vscode/                         # Configurações padronizadas de IDE (Formatters, EOL e Extensions)
-├── 📁 docker/                          # Configurações de Monitoramento
-│   ├── 📁 grafana/                     # Provisionamento de Dashboards Grafana
-│   └── 📜 prometheus.yml               # Configuração do Prometheus Metrics Scraper
-├── 📋 Taskfile.yml                     # Automação de tarefas multiplataforma (Task)
-├── 🔨 Makefile                         # Comandos de automação GNU Make (make up, test, load)
-├── 🐳 docker-compose.yml              # Orquestração de Containers (Postgres, LocalStack, App, Prometheus, Grafana)
-├── 🐳 Dockerfile                       # Containerização usando Bun 1.x Alpine
-├── ⚙️ commitlint.config.js             # Padronização de Conventional Commits
-├── ⚙️ mikro-orm.config.ts             # Configuração ORM, conexão PostgreSQL e Migrações
-├── 📜 package.json                    # Dependências da aplicação e scripts de execução Bun
-├── 📄 tsconfig.json                   # Configuração estrita do TypeScript e Path Aliases (@core, @modules)
-├── ⚙️ .editorconfig                    # Padronização de formatação de código entre editores
-├── 🙈 .gitignore                      # Regras de exclusão de artefatos e segredos para Git
-├── 📖 README.md                       # Documentação didática do projeto
-├── 📐 ARCHITECTURE.md                 # Documento detalhado de decisões arquiteturais, C4 e banco de dados
-└── 🔒 .env.example                    # Modelo de variáveis de ambiente
+├── 📁 .vscode/                         # Standardized IDE Settings (Formatters, EOL, Extensions)
+├── 📁 docker/                          # Monitoring Configuration
+│   ├── 📁 grafana/                     # Grafana Dashboard Provisioning
+│   └── 📜 prometheus.yml               # Prometheus Metrics Scraper Configuration
+├── 📋 Taskfile.yml                     # Cross-platform task automation (Task)
+├── 🔨 Makefile                         # GNU Make automation commands (make up, test, load)
+├── 🐳 docker-compose.yml               # Container Orchestration (Postgres, LocalStack, App, Prometheus, Grafana)
+├── 🐳 Dockerfile                       # Containerization using Bun 1.x Alpine
+├── ⚙️ commitlint.config.js             # Conventional Commits Enforcement
+├── ⚙️ mikro-orm.config.ts              # ORM config, PostgreSQL connection, and Migrations
+├── 📜 package.json                     # Application dependencies and Bun execution scripts
+├── 📄 tsconfig.json                    # Strict TypeScript configuration and Path Aliases (@core, @modules)
+├── ⚙️ .editorconfig                    # Code formatting standard across editors
+├── 🙈 .gitignore                       # Git exclusion rules for artifacts and secrets
+├── 📖 README.md                        # Main project documentation
+├── 📐 ARCHITECTURE.md                  # Detailed architecture decisions, C4, and database design
+└── 🔒 .env.example                     # Environment variables template
 ```
 
 ---
 
-## 📚 Central de Documentação Técnica Detalhada (`docs/`)
+## 📚 Technical Documentation Hub (`docs/`)
 
-Para explorar a documentação completa por tópicos:
+Explore detailed technical documentation by topic:
 
-- 📄 **[00 — Visão Geral do Sistema](docs/00-visao-geral.md)**: Contexto de iGaming, desafios de sistemas distribuídos e ER Diagram do banco.
-- 📐 **[01 — Arquitetura do Sistema & Diagramas](docs/01-arquitetura.md)**: Camadas da Arquitetura Hexagonal, Diagrama C4 de Contêineres e Máquina de Estados.
-- 📡 **[02 — Especificação Completa da API & Payloads](docs/02-api-e-payloads.md)**: Todos os endpoints HTTP, exemplos de request/response e tabela de `FailureCode`.
-- 📬 **[03 — Mensageria, SQS FIFO & Outbox Pattern](docs/03-mensageria-e-sqs.md)**: Payloads SQS FIFO, Inbox pattern e comandos CLI da DLQ.
-- 🔒 **[04 — Concorrência, Locking & Double-Entry](docs/04-concorrencia-e-locks.md)**: Pessimistic Locking (`SELECT FOR UPDATE`), hash canônico SHA-256 e partidas dobradas.
-- 🚀 **[05 — Guia de Execução & Testes](docs/05-guia-de-execucao.md)**: Automação via Taskfile/Makefile, Dashboard Grafana e relatório de testes de carga.
-- 🧪 **[06 — Suíte de Testes & Garantia de Qualidade](docs/06-testes-e-qualidade.md)**: Documentação detalhada dos testes unitários, concorrência, chaos engineering, smoke test e load test.
+- 📄 **[00 — System Overview](docs/00-overview.md)**: iGaming business context, distributed system challenges, and database ER Diagram.
+- 📐 **[01 — System Architecture & Diagrams](docs/01-architecture.md)**: Hexagonal Architecture layers, C4 Container Diagram, and State Machine.
+- 📡 **[02 — Complete API Specification & Payloads](docs/02-api-and-payloads.md)**: All HTTP endpoints, request/response examples, and `FailureCode` table.
+- 📬 **[03 — Messaging, SQS FIFO & Outbox Pattern](docs/03-messaging-and-sqs.md)**: SQS FIFO payloads, Inbox pattern, and DLQ CLI commands.
+- 🔒 **[04 — Concurrency, Locking & Double-Entry](docs/04-concurrency-and-locks.md)**: Pessimistic Locking (`SELECT FOR UPDATE`), SHA-256 canonical hash, and double-entry bookkeeping.
+- 🚀 **[05 — Execution & Testing Guide](docs/05-execution-guide.md)**: Taskfile/Makefile automation, Grafana Dashboard, and load test reports.
+- 🧪 **[06 — Test Suite & Quality Assurance](docs/06-testing-and-quality.md)**: Comprehensive documentation covering unit, concurrency, chaos engineering, smoke, and load tests.
