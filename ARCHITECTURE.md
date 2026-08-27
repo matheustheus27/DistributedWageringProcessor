@@ -1,4 +1,4 @@
-# ARCHITECTURE.md — Distributed Wagering Processor 🦧
+# ARCHITECTURE.md — Distributed Wagering Processor
 
 Este documento detalha as decisões de arquitetura, invariantes de domínio, modelo de concorrência, design do banco de dados e trade-offs técnicos do **Distributed Wagering Processor** — um microserviço financeiro de alta disponibilidade para iGaming.
 
@@ -62,7 +62,7 @@ O diagrama abaixo ilustra todas as transições de estado válidas da entidade `
 ```mermaid
 stateDiagram-v2
     [*] --> PENDING: WagerTransaction.create()
-    
+
     PENDING --> PROCESSED: Transação Aplicada com Sucesso (Saldo Atualizado)
     PENDING --> PENDING_REFERENCE: Referência Ausente (REFUND/ROLLBACK out-of-order)
     PENDING --> REJECTED: Violação de Regra de Negócio (Saldo Insuficiente, Mismatch)
@@ -107,9 +107,9 @@ graph TB
     Provider -->|HTTP REST / Idempotency-Key| App1
     Provider -->|HTTP REST / Idempotency-Key| App2
     Provider -->|Message Events| SQS
-    
+
     SQS -->|Consume wager-transactions.fifo| App3
-    
+
     App1 -->|SELECT FOR UPDATE / Unit of Work| DB
     App2 -->|SELECT FOR UPDATE / Unit of Work| DB
     App3 -->|SELECT FOR UPDATE / Unit of Work| DB

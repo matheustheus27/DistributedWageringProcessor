@@ -1,12 +1,12 @@
-# 🦧 Distributed Wagering Processor
+# Distributed Wagering Processor
 
-[![Bun Version](https://img.shields.io/badge/Bun-1.1-orange?style=for-the-badge&logo=bun)](https://bun.sh/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
-[![NestJS](https://img.shields.io/badge/NestJS-10.3-red?style=for-the-badge&logo=nestjs)](https://nestjs.com/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue?style=for-the-badge&logo=postgresql)](https://www.postgresql.org/)
-[![AWS SQS](https://img.shields.io/badge/AWS_SQS-FIFO-yellow?style=for-the-badge&logo=amazonaws)](https://aws.amazon.com/sqs/)
-[![Docker](https://img.shields.io/badge/Docker-Compose-blue?style=for-the-badge&logo=docker)](https://www.docker.com/)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](https://opensource.org/licenses/MIT)
+![GlassHub Bun](https://glasshub-quasar.vercel.app/api/badge?label=Bun&value=1.1&icon=javascript&url=https%3A%2F%2Freact.dev&shape=rounded&style=glass&glow=true&theme=glass-dark)
+![GlassHub TypeScript](https://glasshub-quasar.vercel.app/api/badge?label=Typescript&value=5.4&icon=typescript&url=https%3A%2F%2Freact.dev&shape=rounded&style=glass&glow=true&theme=glass-dark)
+![GlassHub NestJS](https://glasshub-quasar.vercel.app/api/badge?label=NestJS&value=10.3&icon=javascript&url=https%3A%2F%2Freact.dev&shape=rounded&style=glass&glow=true&theme=glass-dark)
+![GlassHub PostgreSQL](https://glasshub-quasar.vercel.app/api/badge?label=PostgreSQL&value=16&icon=database&url=https%3A%2F%2Freact.dev&shape=rounded&style=glass&glow=true&theme=glass-dark)
+![GlassHub AWS SQS](https://glasshub-quasar.vercel.app/api/badge?label=AWSSQS&value=FIFO&icon=aws&url=https%3A%2F%2Freact.dev&shape=rounded&style=glass&glow=true&theme=glass-dark)
+![GlassHub Docker](https://glasshub-quasar.vercel.app/api/badge?label=Docker&value=Compose&icon=docker&url=https%3A%2F%2Freact.dev&shape=rounded&style=glass&glow=true&theme=glass-dark)
+![GlassHub License](https://glasshub-quasar.vercel.app/api/badge?label=License&value=MIT&icon=license&url=https%3A%2F%2Freact.dev&shape=rounded&style=glass&glow=true&theme=glass-dark)
 
 > [!IMPORTANT]
 > **Microserviço financeiro distribuído de alta concorrência** para processamento de transações de apostas em tempo real.

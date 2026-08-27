@@ -1,4 +1,4 @@
-# 00 — Visão Geral do Sistema 🦧
+# 00 — Visão Geral do Sistema
 
 ## 1. O Contexto de Negócio
 
