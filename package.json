@@ -1,7 +1,7 @@
 {
   "name": "distributed-wagering-processor",
   "version": "1.0.0",
-  "description": "Distributed Wagering Processor for Jungle Gaming Technical Challenge",
+  "description": "Distributed Wagering Processor",
   "main": "dist/main.js",
   "scripts": {
     "build": "nest build",

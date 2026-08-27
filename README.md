@@ -1,4 +1,4 @@
-# 🦧 Distributed Wagering Processor — Jungle Gaming
+# 🦧 Distributed Wagering Processor
 
 [![Bun Version](https://img.shields.io/badge/Bun-1.1-orange?style=for-the-badge&logo=bun)](https://bun.sh/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
@@ -9,15 +9,8 @@
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 > [!IMPORTANT]
-> **Microserviço financeiro distribuído de alta concorrência** para processamento de transações de apostas em tempo real da plataforma **Jungle Gaming**.
+> **Microserviço financeiro distribuído de alta concorrência** para processamento de transações de apostas em tempo real.
 > Garante consistência financeira estrita, idempotência persistente, ledger contábil imutável (Partidas Dobradas) e resiliência total contra falhas distribuídas e redelivery de mensagens.
-
-> [!NOTE]
-> ### 👤 Candidate & Application Info
-> - **Candidato**: Matheus Ferreira
-> - **Perfil no GitHub**: [@matheustheus27](https://github.com/matheustheus27)
-> - **Desafio Técnico**: Distributed Wagering Processor
-> - **Posição**: Backend Developer na **Jungle Gaming** 🦧
 
 ---
 
@@ -55,7 +48,7 @@ sequenceDiagram
 
     Provider->>API: POST /wagering/transactions (HTTP ou SQS)
     API->>UseCase: execute(ProcessWagerCommand)
-    
+
     note over UseCase, DB: 🔒 Transação Atômica SQL (em.transactional)
     UseCase->>DB: 1. SELECT FOR UPDATE com lock_timeout 2s (Lock na Wallet)
     UseCase->>DB: 2. Inserir InboxMessage (Deduplicação)

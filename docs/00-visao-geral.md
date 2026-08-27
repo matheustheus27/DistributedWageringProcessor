@@ -1,8 +1,6 @@
 # 00 — Visão Geral do Sistema 🦧
 
-## 1. O Contexto de Negócio (iGaming)
-
-A **Jungle Gaming** é uma software house especializada em plataformas de cassino online. No ecossistema de iGaming, múltiplos **Provedores de Jogos** (ex.: PG Soft, Pragmatic Play, Evolution) enviam requisições em tempo real para a plataforma de carteira (*Wallet API*) a cada giro de slot, mão de cartas ou aposta efetuada pelo jogador.
+## 1. O Contexto de Negócio
 
 ```mermaid
 flowchart LR

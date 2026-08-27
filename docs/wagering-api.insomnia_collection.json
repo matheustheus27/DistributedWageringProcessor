@@ -7,7 +7,7 @@
     {
       "_id": "wrk_wagering_processor",
       "_type": "workspace",
-      "name": "Distributed Wagering Processor API (Jungle Gaming)",
+      "name": "Distributed Wagering Processor API",
       "description": "Documentação e coleção interativa de APIs do Processador Financeiro de Apostas com encadeamento automático de variáveis.",
       "scope": "design"
     },

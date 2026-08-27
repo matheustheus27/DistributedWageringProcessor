@@ -63,7 +63,7 @@
   "refresh": "5s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["wagering", "jungle-gaming"],
+  "tags": ["wagering", "distributed-system"],
   "time": { "from": "now-15m", "to": "now" },
   "title": "Distributed Wagering Processor Dashboard",
   "version": 1

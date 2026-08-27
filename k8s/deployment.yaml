@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: jungle-gaming/distributed-wagering-processor:latest
+          image: matheustheus27/distributed-wagering-processor:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000
